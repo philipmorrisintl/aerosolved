@@ -1,0 +1,8 @@
+aerosolModel/aerosolModel.C
+aerosolModel/aerosolModelNew.C
+
+twoMomentLogNormalFrederix/twoMomentLogNormalFrederix.C
+sectionalFrederix/sectionalFrederix.C
+zeroTerm/zeroTerm.C
+
+LIB = $(FOAM_USER_LIBBIN)/libaerosolModels

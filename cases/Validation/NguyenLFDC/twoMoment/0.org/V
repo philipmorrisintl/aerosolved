@@ -1,0 +1,44 @@
+FoamFile
+{
+    version     2.0;
+    format      ascii;
+    class       volVectorField;
+    location    "0";
+    object      V;
+}
+
+dimensions      [0 1 -1 0 0 0 0];
+
+internalField   uniform (0 0 0);
+
+boundaryField
+{
+    inlet
+    {
+     	type            groovyBC;
+        value           $internalField;
+        valueExpression "U";
+        variables	    "";
+    }
+    outlet
+    {
+        type            zeroGradient;
+    }
+    wall
+    {
+     	type            fixedValue;
+        value           uniform (0 0 0);
+    }
+    front     
+    {
+        type            wedge;
+    }
+    back     
+    {
+        type            wedge;
+    }
+    axis
+    {
+        type            symmetryPlane;
+    }
+}

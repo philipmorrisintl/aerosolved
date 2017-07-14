@@ -1,0 +1,47 @@
+FoamFile
+{
+    version     2.0;
+    format      ascii;
+    class       dictionary;
+    location    "system";
+    object      fvSolution;
+}
+
+solvers
+{
+    "(U|Y|Z|M|T)"
+    {
+        solver          PBiCG;
+        preconditioner  DILU;
+        tolerance       1E-7;
+        relTol          0;
+    }
+    rho
+    {
+        solver          diagonal;
+    }
+    "(.*Y)"
+    {
+        solver          PCG;
+        preconditioner  DIC;
+        tolerance       1e-7;
+        relTol          0;
+    }
+    p1
+    {
+        solver          PCG;
+        preconditioner  DIC;
+        tolerance       1e-7;
+        relTol          0;
+    }
+}
+
+PISO
+{
+    nCorrectors                 3;
+    residualCorrector           0.0;
+    updateCoeffs                false;
+    relTol                      0;
+    theta                       1.0;
+    nNonOrthogonalCorrectors    0;
+}

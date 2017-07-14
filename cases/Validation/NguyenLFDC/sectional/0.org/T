@@ -1,0 +1,46 @@
+FoamFile
+{
+    version     2.0;
+    format      ascii;
+    class       volScalarField;
+    location    "0";
+    object      T;
+}
+
+dimensions      [0 0 0 1 0 0 0];
+
+internalField   uniform 334.85;
+
+boundaryField
+{
+    inlet
+    {
+        type            groovyBC;
+        value           uniform 334.85;
+        valueExpression "Tmean+(Tmax-Tmin)*0.5*transient";
+        variables       "Tmin=294.55;Tmax=375.15;Tmean=(Tmax+Tmin)*0.5;b=16;dt=0.2;a=-1/(tanh(-b*dt)-1);c=1-a;transient=a*tanh(b*(time()-dt))+c;";
+    }
+    outlet
+    {
+        type            zeroGradient;
+    }
+    wall
+    {
+        type            groovyBC;
+        value           uniform 334.85;
+        valueExpression "(Tmean+transient*(Tmax-Tmin)*0.5*(exp(2*zf)-1)/(exp(2*zf)+1))";
+        variables       "Tmin=294.55;Tmax=375.15;Tmean=(Tmax+Tmin)*0.5;xv=pos().x;xc=0.1;f=37.9;zf=f*(xc-xv);b=16;dt=0.2;a=-1/(tanh(-b*dt)-1);c=1-a;transient=a*tanh(b*(time()-dt))+c;";
+    }
+    front     
+    {
+        type            wedge;
+    }
+    back     
+    {
+        type            wedge;
+    }
+    axis
+    {
+        type            symmetryPlane;
+    }
+}

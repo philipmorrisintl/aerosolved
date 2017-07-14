@@ -1,0 +1,29 @@
+FoamFile
+{
+    version     2.0;
+    format      ascii;
+    class       dictionary;
+    location    "constant";
+    object      aerosolModelProperties;
+}
+
+aerosolModel sectionalFrederix;
+
+aerosolModelParameters
+{
+    sizeDistributionType    linear;
+    yMin                    0;
+    yMax                    1E-14;
+    q                       10;
+    P                       32;
+    distMethod              hybrid;
+    phi                     1.0;
+    solveInZeta             false;
+
+    doDrift                 false;
+    doCoa                   false;
+    doNuc                   true;
+    doCond                  true;
+    doCorrSizeDist          false;
+    doMonitors              true;
+}

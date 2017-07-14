@@ -1,0 +1,8 @@
+turbModel/turbModel.C
+turbModel/turbModelNew.C
+
+
+zeroTerm/zeroTerm.C
+compressibleVreman/compressibleVreman.C
+
+LIB = $(FOAM_USER_LIBBIN)/libturbModels

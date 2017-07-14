@@ -1,0 +1,10 @@
+nucleationModel/nucleationModel.C
+nucleationModel/nucleationModelNew.C
+
+multiSpeciesCNT/multiSpeciesCNT.C
+multiSpeciesFrederix/multiSpeciesFrederix.C
+
+zeroTerm/zeroTerm.C
+
+LIB = $(FOAM_USER_LIBBIN)/libnucleationModels
+

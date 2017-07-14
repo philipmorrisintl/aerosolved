@@ -1,0 +1,17 @@
+FoamFile
+{
+    version     2.0;
+    format      ascii;
+    class       dictionary;
+    location    "constant";
+    object      condensationEvaporationProperties;
+}
+
+condensationEvaporationModel     multiSpeciesFriedlander;
+
+condensationEvaporationModelParameters
+{
+    transitionFunction    false;
+    KelvinEffect          false;
+    TOL                   1E-15;
+}

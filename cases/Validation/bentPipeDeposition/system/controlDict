@@ -1,0 +1,46 @@
+FoamFile
+{
+    version     2.0;
+    format      ascii;
+    class       dictionary;
+    location    "system";
+    object      controlDict;
+}
+
+application     aerosolEulerFoam;
+
+startFrom       latestTime;
+
+startTime       0.0;
+
+stopAt          endTime;
+
+endTime         0.2358;
+
+deltaT          1E-06;
+
+writeControl    adjustableRunTime;
+
+writeInterval   7.86e-03;
+
+purgeWrite      0;
+
+writeFormat     binary;
+
+writePrecision  14;
+
+writeCompression off;
+
+timeFormat      general;
+
+timePrecision   8;
+
+runTimeModifiable true;
+
+adjustTimeStep  yes;
+
+maxCo           1.0;
+
+libs 		    ("libgroovyBC.so");
+
+startAveraging  999.0;

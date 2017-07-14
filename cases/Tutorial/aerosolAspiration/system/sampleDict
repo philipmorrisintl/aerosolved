@@ -1,0 +1,50 @@
+FoamFile
+{
+    version     2.0;
+    format      ascii;
+    class       dictionary;
+    location    "system";
+    object      sampleDict;
+}
+
+interpolationScheme cellPoint;
+
+setFormat raw;
+
+surfaceFormat raw;
+
+sets
+(
+    probe
+    {
+        type        uniform;
+        axis        xyz;
+        start       (0.075 0 0.0);
+        end         (0.075 0 0.004975923633361);
+        nPoints     1024;
+    }
+    inlet
+    {
+        type        uniform;
+        axis        xyz;
+        start       (0.0 0 0.0);
+        end         (0.0 0 0.004975923633361);
+        nPoints     1024;
+    }
+);
+
+fields
+(
+    U
+    rho
+M.0
+M.1
+M.2
+M.3
+M.4
+M.5
+M.6
+M.7
+M.8
+M.9
+);

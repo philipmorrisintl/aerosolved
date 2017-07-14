@@ -1,0 +1,27 @@
+EXE_INC = \
+    -I$(LIB_SRC)/finiteVolume/lnInclude \
+    -I$(LIB_SRC)/meshTools/lnInclude \
+    -I../../../libraries/aerosolModels/lnInclude \
+    -I../../../libraries/driftVelocityModels/lnInclude \
+    -I../../../libraries/brownianDiffusionModels/lnInclude \
+    -I../../../libraries/nucleationModels/lnInclude \
+    -I../../../libraries/condensationEvaporationModels/lnInclude \
+    -I../../../libraries/coalescenceModels/lnInclude \
+    -I../../../libraries/fluidThermo/lnInclude \
+    -I../../../libraries/viscosityModels/lnInclude \
+    -I../../../libraries/fvPatchFieldsExtension/lnInclude
+
+EXE_LIBS = \
+    -L$(FOAM_SITE_LIBBIN) \
+    -L$(FOAM_USER_LIBBIN) \
+    -lfiniteVolume \
+    -lmeshTools \
+    -laerosolModels \
+    -ldriftVelocityModels \
+    -lbrownianDiffusionModels \
+    -lnucleationModels \
+    -lcondensationEvaporationModels \
+    -lcoalescenceModels \
+    -lfluidThermo \
+    -lviscosityModels \
+    -lfvPatchFieldsExtension

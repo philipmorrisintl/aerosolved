@@ -1,0 +1,62 @@
+FoamFile
+{
+    version     2.0;
+    format      ascii;
+    class       volScalarField;
+    location    "0";
+    object      p1;
+}
+
+#include "commonSettings";
+
+dimensions      [1 -1 -2 0 0 0 0];
+
+internalField   uniform 0.0;
+
+boundaryField
+{
+    inlet
+    {
+        type            zeroGradient;
+    }
+
+    outletFlow
+    {
+        type            fixedValue;
+        value           uniform 0.0;
+    }
+
+    outletProbe
+    {
+        type               groovyBC;
+        value              uniform 0.0;
+        gradientExpression "-4.0*$mu*Uprobe/sqr($L/2)*transient";
+        variables          "t=time();Uprobe=7.2/10.0*2.0/$R;transient=(t<$tc?t/$tc:1);";
+        fractionExpression "0";
+    }
+
+    top
+    {
+     	type            zeroGradient;
+    }
+
+    wedgeFront
+    {   
+        type            wedge;
+    }
+
+    wedgeBack 
+    {   
+        type            wedge;
+    }
+
+    axis
+    {
+        type            symmetryPlane;
+    }
+
+    wallProbe
+    {
+        type            zeroGradient;
+    }
+}

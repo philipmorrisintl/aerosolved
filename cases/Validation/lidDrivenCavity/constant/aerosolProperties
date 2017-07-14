@@ -1,0 +1,21 @@
+FoamFile
+{
+    version     2.0;
+    format      ascii;
+    class       dictionary;
+    location    "constant";
+    object      aerosolModelProperties;
+}
+
+aerosolModel zeroTerm;
+
+aerosolModelParameters
+{
+    sizeDistributionType    none;
+    doDrift                 false;
+    doCoa                   false;
+    doNuc                   false;
+    doCond                  false;
+    doCorrSizeDist          false;
+    doMonitors              false;
+}

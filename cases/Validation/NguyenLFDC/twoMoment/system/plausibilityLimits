@@ -1,0 +1,27 @@
+FoamFile
+{
+    version         2.0;
+    format          ascii;
+
+    root            "";
+    case            "";
+    instance        "";
+    local           "";
+
+    class           dictionary;
+    object          plausibilityLimits;
+}
+
+limits
+{
+    rhoMin  1.1;
+    rhoMax  1.5;
+    TMin    290.15;
+    TMax    295.15;
+    YMin    -1e-6;
+    YMax    1.000001;
+    ZMin    -1e-6;
+    ZMax    1.000001;
+    NMin    0.0;
+    NMax    1e+23;
+}

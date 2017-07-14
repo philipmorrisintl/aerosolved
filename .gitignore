@@ -1,0 +1,36 @@
+# VTK exports
+VTK
+
+# Dependency files
+*.dep
+
+# Build folders
+linux*Clang*/
+linux*Gcc*/
+linux*Icc*/
+linuxming*/
+SiCortex*Gcc*/
+solaris*Gcc*/
+SunOS*Gcc*/
+platforms/
+
+# Symbolic link dirs
+lnInclude
+
+# Source packagese
+*.tar.bz2
+*.tar.gz
+*.tar
+*.tgz
+*.gtgz
+
+# OS files
+.DS_Store
+._*
+.nfs*
+
+# TextMate
+*.tmproj
+
+# Xcode
+*.xcworkspace

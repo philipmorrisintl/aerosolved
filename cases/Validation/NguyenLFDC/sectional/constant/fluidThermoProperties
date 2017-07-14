@@ -1,0 +1,103 @@
+FoamFile
+{
+    version     2.0;
+    format      ascii;
+    class       dictionary;
+    location    "constant";
+    object      fluidThermoProperties;
+}
+
+fluidThermoModel compressible;
+
+fluidThermoModelParameters
+{
+    massConservationTolerance   1E9;
+    massConservationRelaxation  0.0;
+    p0                          p0 [1 -1 -2 0 0 0 0] 1E5;
+    rholMin                     9.787544567294539e+02;
+    rholMax                     1.063007007730802e+03;
+    rhovMin                     0.929734376543516;
+    rhovMax                     1.276916900458723;
+}
+
+Species
+{
+    Air
+    {
+        moleWeight          29.0;
+        phaseChange         false;
+        inertFraction       1.0;
+        Tc                  1000;
+
+        vaporProperties
+        {
+            psi             polynomial
+            (
+                (3.487898513603e-03 -1.000)
+            );
+            k               constant 2.70e-2;
+            mu              constant 1.81e-5;
+            Cp              constant 1.004e+3;
+            gamma           constant 1.4;
+            diffusivity
+            {
+                DBP         polynomial ((5.319172708723976e-11 1.75));
+            }
+            Vd              19.7;
+        }
+
+        liquidProperties
+        {
+            rho             constant 1000.0;
+            k               constant 2.70e-2;
+            mu              constant 1.81e-5;
+            Cp              constant 4.2e+3;
+            gamma           constant 1.4;
+            Hvap            constant 0.0;
+        }
+    }
+    DBP
+    {
+        moleWeight          278.35;
+        phaseChange         true;
+        Tc                  1000;
+
+        vaporProperties
+        {
+            psi             polynomial
+            (
+                (3.3477812112464e-02 -1.000)
+            );
+            k               constant 5.63e-1;
+            mu              constant 8.90e-4;
+            Cp              janaf (6.754078417736 4.505114008426 -2.199027340e-3 2.50440e-7);
+            gamma           constant 1.4;
+            P_s             exponential
+            (
+                2.196570212556133e+14
+               -1.1497e+04
+               -1.0
+            );
+            Vd              19.7;
+        }
+
+        liquidProperties
+        {
+            rho             polynomial
+            (
+                ( 1.28863038328e+03 0.000)
+                (-8.26005401974e-01 1.000)
+            );
+            k               constant 5.63e-1;
+            mu              constant 8.90e-4;
+            Cp              janaf (6.754078417736 4.505114008426 -2.199027340e-3 2.50440e-7);
+            gamma           constant 1.4;
+            sigma           polynomial
+            (
+                ( 5.88737164982e-02 0.000)
+                (-8.63000000000e-05 1.000)
+            );
+            Hvap            constant 0.0;
+        }
+    }
+}

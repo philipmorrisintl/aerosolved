@@ -1,0 +1,10 @@
+#!/bin/sh
+cd ${0%/*} || exit 1    # run from this directory
+
+wmake solvers/aerosolEulerFoam
+
+wmake utilities/bentPipeDeform
+wmake utilities/sampleDropletFlux
+wmake utilities/sampleAspirationWedge
+
+# ----------------------------------------------------------------- end-of-file

@@ -1,0 +1,11 @@
+condensationEvaporationModel/condensationEvaporationModel.C
+condensationEvaporationModel/condensationEvaporationModelNew.C
+
+multiSpeciesFriedlander/multiSpeciesFriedlander.C
+multiSpeciesFrederix/multiSpeciesFrederix.C
+multiSpeciesMillerSirignano/multiSpeciesMillerSirignano.C
+
+zeroTerm/zeroTerm.C
+
+LIB = $(FOAM_USER_LIBBIN)/libcondensationEvaporationModels
+

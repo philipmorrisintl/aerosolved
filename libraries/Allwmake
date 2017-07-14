@@ -1,0 +1,25 @@
+#!/bin/sh
+cd ${0%/*} || exit 1    # run from this directory
+makeType=${1:-libso}
+
+wmake $makeType dataEntryExtension
+
+wmake $makeType fluidThermo
+wmake $makeType aerosolModels
+
+wmake $makeType driftVelocityModels
+wmake $makeType brownianDiffusionModels
+wmake $makeType nucleationModels
+wmake $makeType coalescenceModels
+wmake $makeType condensationEvaporationModels
+wmake $makeType viscosityModels
+wmake $makeType conductivityModels
+wmake $makeType diffusionModels
+wmake $makeType turbModels
+
+wmake $makeType solutionControl
+
+wmake $makeType fvPatchFieldsExtension
+
+# ----------------------------------------------------------------- end-of-file
+

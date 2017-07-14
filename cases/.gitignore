@@ -1,0 +1,13 @@
+processor*
+log.*
+faces
+neighbour
+owner
+points
+boundary
+0/
+[0-9]*/
+!0.org/
+plot*.pdf
+simdata.txt
+cellZones

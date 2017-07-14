@@ -1,0 +1,83 @@
+FoamFile
+{
+    version     2.0;
+    format      ascii;
+    class       dictionary;
+    location    "system";
+    object      fvSolution;
+}
+
+solvers
+{
+    U
+    {
+        solver          PBiCG;
+        preconditioner  DILU;
+        tolerance       1E-7;
+        relTol          0;
+    }
+    V
+    {
+        solver          PBiCG;
+        preconditioner  DILU;
+        tolerance       1E-7;
+        relTol          0;
+    }
+    rhoi
+    {
+        solver          PBiCG;
+        preconditioner  DILU;
+        tolerance       1E-7;
+        relTol          0;
+    }
+    Y
+    {
+        solver          PBiCG;
+        preconditioner  DILU;
+        tolerance       1E-7;
+        relTol          0;
+    }
+    Z
+    {
+        solver          PBiCG;
+        preconditioner  DILU;
+        tolerance       1E-7;
+        relTol          0;
+    }
+    M
+    {
+        solver          PBiCG;
+        preconditioner  DILU;
+        tolerance       1E-7;
+        relTol          0;
+    }
+    T
+    {
+        solver          PBiCG;
+        preconditioner  DILU;
+        tolerance       1E-7;
+        relTol          0;
+    }
+    rho
+    {
+        solver          diagonal;
+    }
+    p1
+    {
+        solver           PCG;
+        preconditioner   DIC;
+        tolerance        1E-7;
+        relTol           0;
+    }
+}
+
+PISO
+{
+    nCorrectors         3;
+    residualCorrector   1E-5;
+    updateCoeffs        false;
+    relTol              0;
+    solveP1             true;
+    theta               1.0;
+    nNonOrthogonalCorrectors 0;
+}

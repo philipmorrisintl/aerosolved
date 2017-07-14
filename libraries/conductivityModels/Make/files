@@ -1,0 +1,6 @@
+conductivityModel/conductivityModel.C
+conductivityModel/conductivityModelNew.C
+
+massFractionWeighted/massFractionWeightedConductivity.C
+
+LIB = $(FOAM_USER_LIBBIN)/libconductivityModels

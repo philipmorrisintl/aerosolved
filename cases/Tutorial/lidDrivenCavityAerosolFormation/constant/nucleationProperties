@@ -1,0 +1,16 @@
+FoamFile
+{
+    version     2.0;
+    format      ascii;
+    class       dictionary;
+    location    "constant";
+    object      nucleationProperties;
+}
+
+nucleationModel  multiSpeciesCNT;
+
+Coeffs
+{
+    W       1.33333333;
+    TOL     1E-16;
+}
