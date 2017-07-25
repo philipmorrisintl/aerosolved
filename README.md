@@ -3,7 +3,7 @@
 Welcome to the Git repository of AeroSolved.
 
 AeroSolved is a Computational Fluid Dynamics code, based on the OpenFOAM software package, for simulation of the generation, transport, evolution and deposition of multispecies aerosol mixtures. For more information, documentation and instructions, please go to:
-[http://www.aerosolved.com](www.aerosolved.com)
+[http://aerosolved.com](aerosolved.com)
 
 ## License
 
