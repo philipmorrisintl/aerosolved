@@ -1,7 +1,7 @@
 /*---------------------------------------------------------------------------*\
 License
     AeroSolved
-    Copyright (C) 2017 Philip Morris International
+    Copyright (C) 2019 Philip Morris International
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -17,31 +17,30 @@ License
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 \*---------------------------------------------------------------------------*/
 
-/**
+// Solve the Momentum equation
 
-\file UEqn.H
-\brief Solve the \f$\mathbf{u}\f$-equation
+MRF.correctBoundaryVelocity(U);
 
-Formulate the \f$\mathbf{u}\f$-equation (see Eq. (3.39) in \cite thesis for the
-\f$k\f$th corrector) and solve it using the old pressure in the first iteration
-(i.e., the implicit predictor step of the PISO algorithm). For subsequent
-iterations the UEqn object must be formulated as it is required for the pEqn
-file. An external pressure gradient may also be added.
-
-*/
-
-fvVectorMatrix UEqn
+tmp<fvVectorMatrix> tUEqn
 (
-    fvm::ddt(rho, U)
-  + fvm::div(phi, U)
-  ==
-    fvm::laplacian(muEff+muTurb, U)
-  + fvc::div((muEff+muTurb)*dev2(Foam::T(fvc::grad(U))), "div(mu*dev2(T(grad(U))))")
-  + fvc::grad(turbulence.K(U))
-  + externalGradP
+    fvm::ddt(rho, U) + fvm::div(phi, U)
+  + MRF.DDt(rho, U)
+  + turbulence->divDevRhoReff(U)
+ ==
+    fvc::div(aerosol->tauDrift())
+  + fvOptions(rho, U)
 );
 
-if (piso.corr() == 0)
+fvVectorMatrix& UEqn = tUEqn.ref();
+
+UEqn.relax();
+
+fvOptions.constrain(UEqn);
+
+if (pimple.momentumPredictor())
 {
-    solve(UEqn == - fvc::grad(p1));
+    solve(UEqn == -fvc::grad(p));
+
+    fvOptions.correct(U);
+    K = 0.5*magSqr(U);
 }

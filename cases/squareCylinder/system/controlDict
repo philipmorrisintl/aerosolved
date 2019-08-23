@@ -1,0 +1,79 @@
+FoamFile
+{
+    version     2.0;
+    format      ascii;
+    class       dictionary;
+    location    "system";
+    object      controlDict;
+}
+
+application     aerosolEulerFoam;
+
+startFrom       latestTime;
+
+startTime       0;
+
+stopAt          endTime;
+
+endTime         300;
+
+deltaT          1e-4;
+
+writeControl    adjustableRunTime;
+
+writeInterval   10;
+
+purgeWrite      0;
+
+writeFormat     ascii;
+
+writePrecision  20;
+
+writeCompression off;
+
+timeFormat      general;
+
+timePrecision   10;
+
+runTimeModifiable yes;
+
+adjustTimeStep  yes;
+
+maxCo           0.5;
+
+maxDeltaT       1.0;
+
+libs            ("libcustomFunctions.so");
+
+functions
+{
+    fieldAverage1
+    {
+        type                fieldAverage;
+        libs                ("libfieldFunctionObjects.so");
+
+        writeControl        writeTime;
+
+        restartOnRestart    false;
+        restartOnOutput     false;
+        periodicRestart     false;
+
+        restartTime         200;
+
+        fields
+        (
+            U
+            {
+                mean            on;
+                prime2Mean      on;
+                base            time;
+            }
+            p
+            {
+                mean            on;
+                prime2Mean      off;
+                base            time;
+            }
+        );
+    }
+}

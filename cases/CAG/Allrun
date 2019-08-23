@@ -1,0 +1,151 @@
+#!/bin/sh
+
+cd ${0%/*} || exit 1
+
+. $WM_PROJECT_DIR/bin/tools/RunFunctions
+. ../../scripts/AeroSolvedRunFunctions
+
+checkPython3
+
+if ! [[ $1 =~ ^[1-9][0-9]?$ ]]; then
+    echo "Invalid mesh (specify the radial number of cells in the capillary)"
+    exit 1
+else
+    MESH=$1
+fi
+
+case $2 in
+
+    moment)
+        MODEL=twoMomentLogNormalAnalytical
+        FLUXTYPE=twoMomentFlux
+        ;;
+
+    sectional)
+        MODEL=fixedSectional
+        FLUXTYPE=sectionalFlux
+        ;;
+    *)
+        echo "Invalid aerosol model specified (sectional or moment)"
+        exit 1
+        ;;
+esac
+
+SOURCE=$3
+
+PYIM="import math as m; "
+
+# X and Y coordinates (in mm)
+
+X1=-5
+X2=0
+X3=4.2556
+X4=74.256
+
+Y1=0
+Y2=0.33
+Y3=0.41
+Y4=1
+Y5=8.25
+Y6=10
+
+# Wedge angle (in degrees)
+
+THETA=5
+
+# Ratio between number of axial and radial cells in vapor pipe
+
+F=2
+
+# Grading in vertical direction
+
+GY4=4.0
+
+# Grading in horizontal direction
+
+GX2=0.5
+GX3=4.0
+
+# Compute cell sizes
+
+NY1=$MESH
+NX1=$(echo "print(int($NY1*$F))" | python3)
+
+DXL=$(echo "$PYIM print(($X2-$X1)/$NX1)" | python3)
+DXS=$(echo "$PYIM print($DXL*$GX2)" | python3)
+
+DYS=$(echo "$PYIM print(($Y2-$Y1)/$NY1)" | python3)
+DYL=$(echo "$PYIM print($DYS*$GY4)" | python3)
+
+# Adjust X3 so that the distance between vapor pipe and hot air annulus is at least one cell
+
+Y3=$(echo "$PYIM print($Y2+max($Y3-$Y2,$DYS))" | python3)
+
+# Compute remaining number of cells
+
+NX2=$(echo "$PYIM Q=($X3-$X2-$DXL)/($X3-$X2-$DXS); print(max(int(round(m.log($GX2)/m.log(Q)+1.0)),1))" | python3)
+NX3=$(echo "$PYIM Q=($X4-$X3-$DXS)/($X4-$X3-$DXS*$GX3); print(max(int(round(m.log($GX3)/m.log(Q)+1.0)),1))" | python3)
+
+NY2=$(echo "$PYIM print(max(int(round(($Y3-$Y2)/$DYS)),1))" | python3)
+NY3=$(echo "$PYIM print(max(int(round(($Y4-$Y3)/$DYS)),1))" | python3)
+NY4=$(echo "$PYIM Q=($Y5-$Y4-$DYS)/($Y5-$Y4-$DYS*$GY4); print(max(int(round(m.log($GY4)/m.log(Q)+1.0)),1))" | python3)
+NY5=$(echo "$PYIM print(max(int(round(($Y6-$Y5)/$DYL)),1))" | python3)
+
+# Compute the Z coordinates based on the wedge angle
+
+PI=3.141592653589793
+
+Z2=$(echo "$PYIM print(m.tan($THETA/360.0*$PI)*$Y2)" | python3)
+Z3=$(echo "$PYIM print(m.tan($THETA/360.0*$PI)*$Y3)" | python3)
+Z4=$(echo "$PYIM print(m.tan($THETA/360.0*$PI)*$Y4)" | python3)
+Z5=$(echo "$PYIM print(m.tan($THETA/360.0*$PI)*$Y5)" | python3)
+Z6=$(echo "$PYIM print(m.tan($THETA/360.0*$PI)*$Y6)" | python3)
+
+VARS="\
+    -DVARX1=$X1 \
+    -DVARX2=$X2 \
+    -DVARX3=$X3 \
+    -DVARX4=$X4 \
+    -DVARY1=$Y1 \
+    -DVARY2=$Y2 \
+    -DVARY3=$Y3 \
+    -DVARY4=$Y4 \
+    -DVARY5=$Y5 \
+    -DVARY6=$Y6 \
+    -DVARZ2=$Z2 \
+    -DVARZ3=$Z3 \
+    -DVARZ4=$Z4 \
+    -DVARZ5=$Z5 \
+    -DVARZ6=$Z6 \
+    -DVARNX1=$NX1 \
+    -DVARNX2=$NX2 \
+    -DVARNX3=$NX3 \
+    -DVARNY1=$NY1 \
+    -DVARNY2=$NY2 \
+    -DVARNY3=$NY3 \
+    -DVARNY4=$NY4 \
+    -DVARNY5=$NY5 \
+    -DVARGX2=$GX2 \
+    -DVARGX3=$GX3 \
+    -DVARGY4=$GY4 \
+    -DVARMODEL=$MODEL \
+    -DVARFLUXTYPE=$FLUXTYPE \
+    "
+
+setMacros "$VARS"
+
+cp -r 0.org 0
+
+rm -f 0/*.m4
+
+runApplication blockMesh
+
+if [ "$SOURCE" == "" ]; then
+    runApplication setFields
+else
+    runApplication mapFields -consistent -mapMethod interpolate -noFunctionObjects -sourceTime 'latestTime' $SOURCE
+fi
+
+runApplication decomposePar
+
+runParallel $(getApplication)

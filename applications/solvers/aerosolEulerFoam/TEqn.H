@@ -1,7 +1,7 @@
 /*---------------------------------------------------------------------------*\
 License
     AeroSolved
-    Copyright (C) 2017 Philip Morris International
+    Copyright (C) 2019 Philip Morris International
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -17,29 +17,35 @@ License
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 \*---------------------------------------------------------------------------*/
 
-/**
-
-\file TEqn.H
-\brief Solve the \f$T\f$-equation
-
-For the specified number of non-orthogonal correctors the temperature equation
-is formulated and solved. The time discretization is taken from the fvSchemes
-file. For the \f$k\f$th iteration the formulated equation corresponds to Eq.
-(3.43) from \cite thesis.
-
-*/
-
-while(piso.correctNonOrthogonal())
 {
+    const surfaceScalarField phiv(fvc::absolute(phi/fvc::interpolate(rho), U));
+
     fvScalarMatrix TEqn
     (
-        CpEff*fvm::ddt(rho, T)
-      + CpEff*fvm::div(phi, T, "div(phi,T)")
+        fvm::ddt(rho, T)
+      + fvm::div(phi, T)
       ==
-        fvm::laplacian(kEff+kTurb, T)
-      + (muEff+muTurb) * (fvc::grad(U) && fvc::grad(U))
-      + DpDt
+        fvm::laplacian(thermo.alphaEff(turbulence->mut()), T,"laplacian(alphaEff,T)")
+      - (
+            fvc::div(phiv, p, "div(phiv,p)")
+          + fvc::ddt(rho, K)
+          + fvc::div(phi, K)
+          - aerosol->Qdot()
+        )
+      / thermo.Cv()
+      + fvOptions(rho, T)
     );
 
+    TEqn.relax();
+
+    fvOptions.constrain(TEqn);
+
     TEqn.solve();
+
+    fvOptions.correct(T);
+
+    thermo.correctThermo();
+    thermo.correct();
+
+    Info<< "min(T) = " << min(T).value() << ", max(T) = " << max(T).value() << endl;
 }

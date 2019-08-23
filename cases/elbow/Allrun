@@ -1,0 +1,51 @@
+#!/bin/sh
+
+cd ${0%/*} || exit 1
+
+. $WM_PROJECT_DIR/bin/tools/RunFunctions
+. ../../scripts/AeroSolvedRunFunctions
+
+if ! [[ $1 =~ ^(fullStokes|Manninen)$ ]]; then
+    echo "Invalid inertial model (fullStokes or Manninen)"
+    exit 1
+else
+    INERTIALMODEL=$1
+fi
+
+case $2 in
+
+    moment)
+        MODEL=twoMomentLogNormalAnalytical
+        FLUXTYPE=twoMomentFlux
+        MINLETBCNAME=twoMomentLogNormal
+        ;;
+
+    sectional)
+        MODEL=fixedSectional
+        FLUXTYPE=sectionalFlux
+        MINLETBCNAME=sectionalLogNormal
+        ;;
+    *)
+        echo "Invalid aerosol model specified (sectional or moment)"
+        exit 1
+        ;;
+esac
+
+cp -r 0.org 0
+
+VARS="\
+    -DVARINERTIALMODEL=$INERTIALMODEL \
+    -DVARMODEL=$MODEL \
+    -DVARFLUXTYPE=$FLUXTYPE \
+    -DVARMINLETBCNAME=$MINLETBCNAME \
+    "
+
+setMacros "$VARS"
+
+rm -f 0/*.m4
+
+runApplication blockMesh
+
+runApplication decomposePar
+
+runParallel $(getApplication)

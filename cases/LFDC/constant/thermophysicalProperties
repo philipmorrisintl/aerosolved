@@ -1,0 +1,27 @@
+FoamFile
+{
+    version     2.0;
+    format      ascii;
+    class       dictionary;
+    location    "constant";
+    object      thermophysicalProperties;
+}
+
+activeSpecies
+(
+    DBP
+);
+
+inactiveSpecies
+(
+    Air
+);
+
+inertSpecie Air;
+
+phaseMixing
+{
+    viscosity       continuousPhase;
+    conductivity    mass;
+    heatCapacity    mass;
+}

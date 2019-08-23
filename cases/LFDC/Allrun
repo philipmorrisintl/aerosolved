@@ -1,0 +1,85 @@
+#!/bin/sh
+
+cd ${0%/*} || exit 1
+
+. $WM_PROJECT_DIR/bin/tools/RunFunctions
+. ../../scripts/AeroSolvedRunFunctions
+
+checkPython3
+
+YMIN=1E-25
+YMAX=1E-10
+
+MATH="import math as m"
+
+if ! [[ $1 =~ ^[1-9][0-9]? ]]; then
+    echo "Invalid mesh (specify radial number of cells)"
+    exit 1
+else
+    MESH=$1
+fi
+
+case $2 in
+
+    moment)
+
+        MODEL=twoMomentLogNormalAnalytical
+
+        N=1 #Dummy
+
+        ;;
+
+    sectional)
+
+        MODEL=fixedSectional
+
+        if [[ ! $3 =~ ^[0-9]+ ]]; then
+
+            echo "Specify sectional density (in sections/mass decade)"
+            exit 1
+
+        fi
+
+        SECTIONSPERDECADE=$3
+
+        N=$(echo "$MATH; print(int(m.log10($YMAX/$YMIN)*$SECTIONSPERDECADE))" | python3)
+
+        ;;
+    *)
+        echo "Invalid aerosol model specified (sectional or moment)"
+        exit 1
+        ;;
+esac
+
+NZ=$MESH
+NX=$(echo "$MATH; print(int($NZ*32))" | python3)
+
+VARS="\
+    -DVARNX=$NX \
+    -DVARNZ=$NZ \
+    -DVARN=$N \
+    -DVARYMIN=$YMIN \
+    -DVARYMAX=$YMAX \
+    -DVARMODEL=$MODEL \
+    "
+
+setMacros "$VARS"
+
+cp -r 0.org 0
+
+rm -f 0/*.m4
+
+rm -f params.txt
+echo $YMIN >> params.txt
+echo $YMAX >> params.txt
+echo $N >> params.txt
+
+runApplication blockMesh
+
+runApplication setFields
+
+runApplication decomposePar
+
+runParallel $(getApplication)
+
+#runApplication python3 plot.py $2

@@ -1,0 +1,31 @@
+FoamFile
+{
+    version     2.0;
+    format      ascii;
+    class       dictionary;
+    object      topoSetDict;
+}
+
+actions
+(
+    {
+        name        probe;
+        type        faceSet;
+        action      new;
+        source      boxToFace;
+        sourceInfo
+        {
+            box (0.004999 -1 -1) (0.005001 1 9.951847266721999e-04);
+        }
+    }
+    {
+        name        probe;
+        type        faceZoneSet;
+        action      new;
+        source      setToFaceZone;
+        sourceInfo
+        {
+            faceSet probe;
+        }
+    }
+);

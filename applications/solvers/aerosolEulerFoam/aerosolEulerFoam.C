@@ -1,7 +1,7 @@
 /*---------------------------------------------------------------------------*\
 License
     AeroSolved
-    Copyright (C) 2017 Philip Morris International
+    Copyright (C) 2019 Philip Morris International
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -20,236 +20,122 @@ License
 /**
 
 \file aerosolEulerFoam.C
-\brief Main aerosol PISO solver
+\brief Main AeroSolved solver
 
-This is the main source file of the aerosolEulerFoam solver. It is based
-on \cite thesis, in particular Chptr. 3 in that work, which, in turn, is
-mainly based on Issa's compressible PISO algorithm for reacting flows
-\cite Issa:1991aa.
-
-The executable has four options:
-
-- -timeAveraing: enable time averaging.
-
-- -plausibilityCheck: checks if the solution is still plausible as
-  defined by the plausibilityLimits dictionary.
-
-- -externalGradP: reads the external pressure gradient from the
-  transportProperties dictionary and inserts it into the
-  momentum equation.
-
-- -positivity: enables clipping to zero to ensure positivity of the
-  solution.
-
-References to equation numbers in comments in the code are with respect to
-\cite thesis.
+The aerosolEulerFoam solver is based on the standard reactingFoam OpenFOAM
+solver. It can be seen as the reactingFoam solver in which the reaction model is
+replaced by an aerosol model. The solver is a transient one, and solves for each
+time step the evolution of a two-phase aerosol mixture while relying on
+OpenFOAM's PIMPLE algorithm.
 
 */
 
-// OpenFOAM includes
-
-#include "multivariateScheme.H"
 #include "fvCFD.H"
-#include "EulerDdtScheme.H"
-
-// AeroSolved includes
-
 #include "aerosolModel.H"
-#include "fluidThermo.H"
-#include "driftVelocityModel.H"
-#include "nucleationModel.H"
-#include "condensationEvaporationModel.H"
-#include "diffusionModel.H"
-#include "brownianDiffusionModel.H"
-#include "conductivityModel.H"
-#include "coalescenceModel.H"
-#include "viscosityModel.H"
-#include "turbModel.H"
-#include "pisoControl.H"
-#include "timeAveraging.H"
-#include "plausibility.H"
+#include "aerosolThermo.H"
+#include "turbulentFluidThermoModel.H"
+#include "multivariateScheme.H"
+#include "pimpleControl.H"
+#include "pressureControl.H"
+#include "fvOptions.H"
+#include "localEulerDdtScheme.H"
+#include "fvcSmooth.H"
+#include "multiComponentPhaseMixture.H"
+#include "basicMultiComponentMixture.H"
+
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
 int main(int argc, char *argv[])
 {
-    argList::validOptions.insert("timeAveraging","");
-    argList::validOptions.insert("plausibilityCheck","");
-    argList::validOptions.insert("externalGradP","");
-    argList::validOptions.insert("positivity","");
+    #include "postProcess.H"
 
     #include "setRootCase.H"
     #include "createTime.H"
     #include "createMesh.H"
+    #include "createControl.H"
+    #include "createTimeControls.H"
+    #include "initContinuityErrs.H"
     #include "createFields.H"
+    #include "createFieldRefs.H"
+    #include "createFvOptions.H"
 
-    pisoControl piso(mesh);
+    turbulence->validate();
 
-    // Create the plausibility object
+    if (!LTS)
+    {
+        #include "compressibleCourantNo.H"
+        #include "setInitialDeltaT.H"
+    }
 
-    Plausibility plausibility
-    (
-        thermo,
-        runTime,
-        args.options().found("plausibilityCheck")
-    );
-
-    // Get theta for the custom theta scheme implementations in Yj, Zj and Mi.
-
-    const scalar theta = piso.theta();
-    scalar im = theta;
-    scalar ex = (1.0-theta);
-
-    Info << "Using theta = " << theta << " (implicit = "
-         << im << ", explicit = " << ex << ")" << endl;
-
-    // Print the selected schemes
-
-    Info << endl << mesh.schemesDict() << endl << endl;
+    // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
     Info<< "\nStarting time loop\n" << endl;
-
-    // Start the time loop
 
     while (runTime.run())
     {
         #include "readTimeControls.H"
 
-        // Compute CFL numbers and restrict the time step
+        aerosol->correct();
 
-        #include "stability.H"
-        #include "setDeltaT.H"
-
-        runTime++;
-        Info<< "Time = " << runTime.timeName() << nl << endl;
-
-        // ---- Predictor step  ----------------------------------------------
-
-        if (doEuler)
+        if (LTS)
         {
-            im = 1.0;
-            ex = 0.0;
-
-            doEuler = false;
+            #include "setRDeltaT.H"
         }
         else
         {
-            im = theta;
-            ex = (1.0-theta);
+            #include "compressibleCourantNo.H"
+            #include "aerosolCourantNo.H"
+            #include "setDeltaT.H"
         }
 
-        // Updated explicit fluxes phiM, phiY, phiZ and phidRho
+        runTime++;
 
-        #include "fluxes.H"
-
-        // Update the aerosol model
-
-        aerosol.update();
-
-        // Explicit prediction of density, Eq. (3.22)
+        Info<< "Time = " << runTime.timeName() << nl << endl;
 
         #include "rhoEqn.H"
 
-        // Implicit prediction of temperature, Eq. (3.24)
-
-        #include "TEqn.H"
-
-        // First fractional step of the set X, Eq. (3.25)
-
-        #include "YEqn.H"
-        #include "ZEqn.H"
-        #include "MEqn.H"
-
-        // Second fractional step of the set X, Eq (3.26)
-
-        aerosol.fractionalStepInternal();
-
-        // Update psi based on the first predictions
-
-        thermo.updatePsi();
-
-        #include "coeffs.H"
-
-        // First implicit prediction of the velocity, Eq. (3.23)
-
-        #include "UEqn.H"
-
-        // ---- Corrector steps  ---------------------------------------------
-
-        while(piso.loop())
+        // --- Pressure-velocity PIMPLE corrector loop
+        while (pimple.loop())
         {
-            if (piso.corr() > 1)
+            if (!pimple.frozenFlow())
             {
-                // Update psi and density
+                #include "UEqn.H"
 
-                thermo.updatePsi();
-                thermo.updateRho();
+                if (runTime.value() > calcAerosolAfter)
+                {
+                    aerosol->solvePre();
 
-                #include "coeffs.H"
+                    #include "YEqn.H"
+
+                    aerosol->solvePost();
+
+                    #include "TEqn.H"
+                }
+
+                // --- Pressure corrector loop
+                while (pimple.correct())
+                {
+                    #include "pEqn.H"
+                }
+
+                if (pimple.turbCorr())
+                {
+                    turbulence->correct();
+                }
             }
+            else
+            {
+                aerosol->solvePre();
 
-            // Pressure equation, Eq. (3.420
+                #include "YEqn.H"
 
-            #include "pEqn.H"
+                aerosol->solvePost();
 
-            // Update fluxes phiM, phiY, phiZ and phidRho
-
-            #include "fluxes.H"
-
-            thermo.updateRho();
-
-            #include "rhoEqn.H"
-
-            // Correct the temperature, Eq. (3.43)
-
-            #include "TEqn.H"
-
-            // First fractional step of the set X, Eq. (3.44)
-
-            #include "YEqn.H"
-            #include "ZEqn.H"
-            #include "MEqn.H"
-
-            // Second fractional step of the set X, Eq. (3.45)
-
-            aerosol.fractionalStepInternal();
+                #include "TEqn.H"
+            }
         }
 
-        // Third fractional step (coagulation)
-
-        aerosol.fractionalStepExternal();
-
-        // Rescale solution
-
-        if(args.options().found("positivity"))
-        {
-            thermo.rescale(Y, Z, M, true, true);
-        }
-        else
-        {
-            thermo.rescale(Y, Z, M, true, false);
-        }
-
-        // Correct the size distribution to satisfy the consistency relation, Eq. (2.23) or (2.31)
-
-        aerosol.correctSizeDistribution();
-
-        aerosol.checkConsistency();
-
-        // Time averaging
-
-        if(args.options().found("timeAveraging"))
-        {
-            timeAveraging
-            (
-                meanDataFields, U, thermo, aerosol, startAveraging, runTime
-            );
-        }
-
-        // Plausibility check
-
-        if (args.options().found("plausibilityCheck"))
-        {
-            plausibility.check();
-        }
+        rho = thermo.rho();
 
         runTime.write();
 
@@ -258,7 +144,10 @@ int main(int argc, char *argv[])
             << nl << endl;
     }
 
+    Info<< "End\n" << endl;
+
     return 0;
 }
+
 
 // ************************************************************************* //

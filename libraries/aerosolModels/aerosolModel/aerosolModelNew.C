@@ -1,7 +1,7 @@
 /*---------------------------------------------------------------------------*\
 License
     AeroSolved
-    Copyright (C) 2017 Philip Morris International
+    Copyright (C) 2019 Philip Morris International
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -24,16 +24,17 @@ License
 Foam::autoPtr<Foam::aerosolModel>
 Foam::aerosolModel::New
 (
-    const fvMesh& mesh
+    const fvMesh& mesh,
+    const word& aerosolProperties
 )
 {
-    const word model
+    const word aeroTypeName
     (
         IOdictionary
         (
             IOobject
             (
-                dictName,
+                aerosolProperties,
                 mesh.time().constant(),
                 mesh,
                 IOobject::MUST_READ,
@@ -43,24 +44,25 @@ Foam::aerosolModel::New
         ).lookup("aerosolModel")
     );
 
-    Info<< "Selecting aerosol model " << model << endl;
+    Info<< "Selecting aerosol model " << aeroTypeName << endl;
 
     dictionaryConstructorTable::iterator cstrIter =
-        dictionaryConstructorTablePtr_->find(model);
+        dictionaryConstructorTablePtr_->find(aeroTypeName);
 
     if (cstrIter == dictionaryConstructorTablePtr_->end())
     {
-        FatalErrorIn
-        (
-            "aerosolModel::New"
-        )   << "Unknown aerosol model "
-            << model << endl << endl
+        FatalErrorInFunction
+            << "Unknown aerosol model type "
+            << aeroTypeName << endl << endl
             << "Valid aerosol models are : " << endl
             << dictionaryConstructorTablePtr_->toc()
             << exit(FatalError);
     }
 
-    return autoPtr<aerosolModel>(cstrIter()(mesh));
+    return autoPtr<aerosolModel>
+    (
+        cstrIter()(aeroTypeName, mesh, aerosolProperties)
+    );
 }
 
 

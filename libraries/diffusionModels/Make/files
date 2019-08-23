@@ -1,9 +1,0 @@
-diffusionModel/diffusionModel.C
-diffusionModel/diffusionModelNew.C
-
-zeroTerm/zeroTerm.C
-FickBinaryDiffusion/FickBinaryDiffusion.C
-HirschfelderCurtiss/HirschfelderCurtiss.C
-
-
-LIB = $(FOAM_USER_LIBBIN)/libdiffusionModels

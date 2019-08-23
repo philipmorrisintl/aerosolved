@@ -1,0 +1,137 @@
+#!/bin/sh
+
+cd ${0%/*} || exit 1
+
+. $WM_PROJECT_DIR/bin/tools/RunFunctions
+. ../../scripts/AeroSolvedRunFunctions
+
+checkPython3
+
+# Reynolds number
+
+RE=2500
+
+# Ratio of width (B) over height (H) of block
+
+BH=3
+
+# Grading
+
+G=4
+
+# Height of block
+
+H=1
+
+# Ratios of channel heigh, inlet distance and outlet distance over H
+
+LH=20
+IH=5
+OH=30
+
+if ! [[ $1 =~ ^[A-I]$ ]]; then
+    echo "Invalid mesh (A-F)"
+    exit 1
+else
+    MESH=$1
+fi
+
+case $MESH in
+    A)
+        N=4
+        NPROC=1
+        ;;
+    B)
+        N=6
+        NPROC=2
+        ;;
+    C)
+        N=8
+        NPROC=4
+        ;;
+    D)
+        N=12
+        NPROC=8
+        ;;
+    E)
+        N=16
+        NPROC=16
+        ;;
+    F)
+        N=24
+        NPROC=32
+        ;;
+    G)
+        N=32
+        NPROC=63
+        ;;
+    H)
+        N=48
+        NPROC=63
+        ;;
+    I)
+        N=64
+        NPROC=63
+        ;;
+esac
+
+MATH="import math as m"
+
+B=$(echo "$MATH; print($H*$BH)" | python3)
+
+G1=$G
+G2=$(echo "$MATH; print(1.0/$G)" | python3)
+
+BHALF=$(echo "$MATH; print($H*$BH/2.0)" | python3)
+HHALF=$(echo "$MATH; print($H/2.0)" | python3)
+LHALF=$(echo "$MATH; print($H*$LH/2.0)" | python3)
+
+INLET=$(echo "$MATH; print($H*$IH+$BHALF)" | python3)
+OUTLET=$(echo "$MATH; print($H*$OH+$BHALF)" | python3)
+
+NXI=$(echo "$MATH; print(int(round(($INLET-$BHALF)/$H*$N/m.sqrt($G))))" | python3)
+NXB=$(echo "$MATH; print(int(round($B/$H*$N)))" | python3)
+NXO=$(echo "$MATH; print(int(round(($OUTLET-$BHALF)/$H*$N/m.sqrt($G))))" | python3)
+
+NYV=$(echo "$MATH; print(int(round(($LHALF-$HHALF)/$H*$N/m.sqrt($G))))" | python3)
+NYH=$(echo "$MATH; print(int(round($H*$N)))" | python3)
+
+NU=$(echo "$MATH; print(1.0/$RE)" | python3)
+
+VARS="\
+    -DVARSCHEME=$SCHEME \
+    -DVARNPROC=$NPROC \
+    -DVARNU=$NU \
+    -DVARBHALF=$BHALF \
+    -DVARHHALF=$HHALF \
+    -DVARLHALF=$LHALF \
+    -DVAROUTLET=$OUTLET \
+    -DVARINLET=$INLET \
+    -DVARNXI=$NXI \
+    -DVARNXB=$NXB \
+    -DVARNXO=$NXO \
+    -DVARNYV=$NYV \
+    -DVARNYH=$NYH \
+    -DVARG1=$G1 \
+    -DVARG2=$G2 \
+    "
+
+setMacros "$VARS"
+
+cp -r 0.org 0
+
+find 0 -name *.m4 -exec rm {} \;
+
+runApplication blockMesh
+
+if [ "$NPROC" -gt "1" ]; then
+
+    runApplication decomposePar
+
+    runParallel $(getApplication)
+
+else
+
+    runApplication $(getApplication)
+
+fi

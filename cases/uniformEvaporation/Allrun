@@ -1,0 +1,51 @@
+#!/bin/sh
+
+cd ${0%/*} || exit 1
+
+. $WM_PROJECT_DIR/bin/tools/RunFunctions
+. ../../scripts/AeroSolvedRunFunctions
+
+checkPython3
+
+YMIN=1E-24
+YMAX=1E-12
+
+SECTIONSPERDECADE=4
+
+MATH="import math as m"
+
+case $1 in
+
+    moment)
+
+        MODEL=twoMomentLogNormalAnalytical
+
+        ;;
+
+    sectional)
+
+        MODEL=fixedSectional
+
+        N=$(echo "$MATH; print(int(m.log10($YMAX/$YMIN)*$SECTIONSPERDECADE))" | python3)
+
+        ;;
+    *)
+        echo "Invalid aerosol model specified (sectional or moment)"
+        exit 1
+        ;;
+esac
+
+VARS="\
+    -DVARYMIN=$YMIN \
+    -DVARYMAX=$YMAX \
+    -DVARN=$N \
+    -DVARMODEL=$MODEL \
+    "
+
+setMacros "$VARS"
+
+cp -r 0.org 0
+
+runApplication blockMesh
+
+runApplication $(getApplication)

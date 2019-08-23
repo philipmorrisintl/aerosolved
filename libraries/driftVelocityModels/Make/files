@@ -1,9 +1,0 @@
-driftVelocityModel/driftVelocityModel.C
-driftVelocityModel/driftVelocityModelNew.C
-
-ManninenDrift/ManninenDrift.C
-FrederixDrift/FrederixDrift.C
-zeroTerm/zeroTerm.C
-
-LIB = $(FOAM_USER_LIBBIN)/libdriftVelocityModels
-

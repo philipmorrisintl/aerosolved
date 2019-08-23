@@ -1,7 +1,11 @@
-#!/bin/sh
-cd ${0%/*} || exit 1    # run from this directory
+#!/bin/bash
 
-./libraries/Allwmake
-./applications/Allwmake
+wmake libso libraries/customFunctions
 
-# ----------------------------------------------------------------- end-of-file
+wmakeLnInclude libraries/customTurbulenceModels/turbulenceModels
+wmake libso libraries/customTurbulenceModels/compressible
+
+wmake libso libraries/aerosolThermo
+wmake libso libraries/aerosolModels
+
+wmake applications/solvers/aerosolEulerFoam

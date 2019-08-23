@@ -1,0 +1,64 @@
+FoamFile
+{
+    version     2.0;
+    format      ascii;
+    class       dictionary;
+    location    "system";
+    object      fvSolution;
+}
+
+solvers
+{
+    "rho.*"
+    {
+        solver          diagonal;
+    }
+
+    p
+    {
+        solver          PCG;
+        preconditioner  DIC;
+        tolerance       1e-6;
+        relTol          1e-2;
+    }
+
+    pFinal
+    {
+        $p;
+    }
+
+    "(U|k|epsilon|T|M)"
+    {
+        solver          PBiCGStab;
+        preconditioner  DILU;
+        tolerance       1e-6;
+    }
+
+    "(U|k|epsilon|T|M)Final"
+    {
+        $U;
+    }
+
+    Y
+    {
+        solver          PBiCGStab;
+        preconditioner  DILU;
+        tolerance       1e-16;
+    }
+}
+
+PIMPLE
+{
+    momentumPredictor   false;
+    nOuterCorrectors    1;
+    nCorrectors         2;
+    nNonOrthogonalCorrectors 0;
+}
+
+relaxationFactors
+{
+    equations
+    {
+        ".*"            1;
+    }
+}

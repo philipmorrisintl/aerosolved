@@ -1,0 +1,56 @@
+FoamFile
+{
+    version     2.0;
+    format      ascii;
+    class       volVectorField;
+    location    "0";
+    object      V;
+}
+
+dimensions      [0 1 -1 0 0 0 0];
+
+internalField   uniform (0 0 0);
+
+boundaryField
+{
+    inlet
+    {
+        type            fixedValue;
+        value           $internalField;
+    }
+
+    outletFlow
+    {
+        type            zeroGradient;
+    }
+
+    outletProbe
+    {
+        type            zeroGradient;
+    }
+
+    top
+    {
+        type            slip;
+    }
+
+    wedgeFront
+    {
+        type            wedge;
+    }
+
+    wedgeBack
+    {
+        type            wedge;
+    }
+
+    axis
+    {
+        type            symmetryPlane;
+    }
+
+    wallProbe
+    {
+        type            slip;
+    }
+}

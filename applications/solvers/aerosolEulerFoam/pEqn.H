@@ -1,7 +1,7 @@
 /*---------------------------------------------------------------------------*\
 License
     AeroSolved
-    Copyright (C) 2017 Philip Morris International
+    Copyright (C) 2019 Philip Morris International
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -17,83 +17,104 @@ License
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 \*---------------------------------------------------------------------------*/
 
-/**
-
-\file pEqn.H
-\brief Solve the \f$p\f$-equation.
-
-In this file a number of things are done:
-
-- The pressure equation is formulated. For the \f$k\f$th iteration (or \f$(k-1)\f$th
-  corrector) the pressure equation is given by Eq. (3.34) in the thesis. Depending
-  on the fluidThermo model which is selected, the ddt-term may be present implicitly,
-  explicitly, or not present at all in case of incompressible flow.
-
-- The pressue equation is solved. For the final non-orthogonal iteration the flux
-  field \f$\phi\f$ is updated from the pressure equation. This update corresponds to
-  Eq. (3.41).
-
-- The velocity \f$\mathbf{u}\f$ is updated. This corresponds to Eq. (3.40).
-
-- The material time derivative of pressure \f$\mathrm{D}_tp\f$ is updated for further
-  use in the temperature equation.
-
-*/
+rho = thermo.rho();
 
 volScalarField rAU(1.0/UEqn.A());
 surfaceScalarField rhorAUf("rhorAUf", fvc::interpolate(rho*rAU));
+volVectorField HbyA(constrainHbyA(rAU*UEqn.H(), U, p));
 
-volVectorField HbyA("HbyA", U);
-HbyA = rAU*UEqn.H();
-
-surfaceScalarField phiHbyA
-(
-    "phiHbyA",
-    (fvc::interpolate(rho*HbyA) & mesh.Sf())
-);
-
-while (piso.correctNonOrthogonal())
+if (pimple.nCorrPISO() <= 1)
 {
-    fvScalarMatrix p1Eqn
+    tUEqn.clear();
+}
+
+if (pimple.transonic())
+{
+    surfaceScalarField phid
     (
-        fvc::div(phiHbyA + phidRho)
-      - fvm::laplacian(rhorAUf, p1)
+        "phid",
+        fvc::interpolate(psi)
+       *(
+            fvc::flux(HbyA)
+          + rhorAUf*fvc::ddtCorr(rho, U, phi)/fvc::interpolate(rho)
+        )
     );
 
-    if (thermo.type() == "semiIncompressible")
+    MRF.makeRelative(fvc::interpolate(psi), phid);
+
+    while (pimple.correctNonOrthogonal())
     {
-        p1Eqn = (p1Eqn + fvc::ddt(rho));
+        fvScalarMatrix pEqn
+        (
+            fvm::ddt(psi, p)
+          + fvm::div(phid, p)
+          - fvm::laplacian(rhorAUf, p)
+         ==
+            fvOptions(psi, p, rho.name())
+        );
+
+        pEqn.solve(mesh.solver(p.select(pimple.finalInnerIter())));
+
+        if (pimple.finalNonOrthogonalIter())
+        {
+            phi == pEqn.flux();
+        }
     }
-    else if (thermo.type() == "compressible")
+}
+else
+{
+    surfaceScalarField phiHbyA
+    (
+        "phiHbyA",
+        (
+            fvc::flux(rho*HbyA)
+          + rhorAUf*fvc::ddtCorr(rho, U, phi)
+        )
+    );
+
+    MRF.makeRelative(fvc::interpolate(rho), phiHbyA);
+
+    // Update the pressure BCs to ensure flux consistency
+    constrainPressure(p, rho, U, phiHbyA, rhorAUf, MRF);
+
+    while (pimple.correctNonOrthogonal())
     {
-        p1Eqn = (p1Eqn + fvm::ddt(psi, p1) + p0 * fvc::ddt(psi));
-    }
-    else if (thermo.type() == "incompressible")
-    {
-        // No ddt(rho)
-    }
+        fvScalarMatrix pEqn
+        (
+            fvm::ddt(psi, p)
+          + fvc::div(phiHbyA)
+          - fvm::laplacian(rhorAUf, p)
+         ==
+            fvOptions(psi, p, rho.name())
+        );
 
-    p1Eqn.solve();
+        pEqn.solve(mesh.solver(p.select(pimple.finalInnerIter())));
 
-    // Update the initial residual if we're in the first non-orthogonal corrector
-
-    if (piso.corrNonOrtho() == 1)
-    {
-        piso.updateResidual();
-    }
-
-    // Update the flux in the final non-orthogonal corrector, Eq. (3.32) or (3.41)
-
-    if (piso.finalNonOrthogonalIter())
-    {
-        phi == phiHbyA + p1Eqn.flux();
+        if (pimple.finalNonOrthogonalIter())
+        {
+            phi = phiHbyA + pEqn.flux();
+        }
     }
 }
 
-// Update velocity, Eq. (3.31) or (3.40)
+#include "rhoEqn.H"
+#include "compressibleContinuityErrs.H"
 
-U = rAU*(UEqn.H() - fvc::grad(p1));
+// Explicitly relax pressure for momentum corrector
+p.relax();
 
+U = HbyA - rAU*fvc::grad(p);
 U.correctBoundaryConditions();
+fvOptions.correct(U);
+K = 0.5*magSqr(U);
 
-DpDt == fvc::ddt(p1)+(U & fvc::grad(p1));
+if (pressureControl.limit(p))
+{
+    p.correctBoundaryConditions();
+    rho = thermo.rho();
+}
+
+if (thermo.dpdt())
+{
+    dpdt = fvc::ddt(p);
+}

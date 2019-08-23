@@ -1,0 +1,56 @@
+FoamFile
+{
+    version     2.0;
+    format      ascii;
+    class       volScalarField;
+    location    "0";
+    object      Air.continuous;
+}
+
+dimensions      [0 0 0 0 0 0 0];
+
+internalField   uniform 1.0;
+
+boundaryField
+{
+    inlet
+    {
+        type        saturatedMixture;
+        value       $internalField;
+        S
+        {
+            DBP     1;
+        }
+        inertMoleFrac
+        {
+            Air     1;
+        }
+    }
+
+    outlet
+    {
+        type        inletOutlet;
+        inletValue  $internalField;
+        value       $internalField;
+    }
+
+    walls
+    {
+        type        zeroGradient;
+    }
+
+    front
+    {
+        type        wedge;
+    }
+
+    back
+    {
+        type        wedge;
+    }
+
+    axis
+    {
+        type        empty;
+    }
+}

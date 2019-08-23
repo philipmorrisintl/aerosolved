@@ -1,6 +1,0 @@
-viscosityModel/viscosityModel.C
-viscosityModel/viscosityModelNew.C
-
-massFractionWeighted/massFractionWeightedViscosity.C
-
-LIB = $(FOAM_USER_LIBBIN)/libviscosityModels

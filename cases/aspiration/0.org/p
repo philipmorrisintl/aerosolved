@@ -1,0 +1,60 @@
+FoamFile
+{
+    version     2.0;
+    format      ascii;
+    class       volScalarField;
+    location    "0";
+    object      p;
+}
+
+dimensions      [1 -1 -2 0 0 0 0];
+
+internalField   uniform 1E5;
+
+boundaryField
+{
+    inlet
+    {
+        type            fixedFluxPressure;
+        value           $internalField;
+    }
+
+    outletFlow
+    {
+        type            totalPressure;
+        p0              $internalField;
+    }
+
+    outletProbe
+    {
+        type            fixedFluxPressure;
+        value           $internalField;
+    }
+
+    top
+    {
+        type            fixedFluxPressure;
+        value           $internalField;
+    }
+
+    wedgeFront
+    {
+        type            wedge;
+    }
+
+    wedgeBack
+    {
+        type            wedge;
+    }
+
+    axis
+    {
+        type            symmetryPlane;
+    }
+
+    wallProbe
+    {
+        type            fixedFluxPressure;
+        value           $internalField;
+    }
+}

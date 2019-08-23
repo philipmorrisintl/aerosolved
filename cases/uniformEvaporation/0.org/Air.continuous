@@ -1,0 +1,20 @@
+FoamFile
+{
+    version     2.0;
+    format      ascii;
+    class       volScalarField;
+    location    "0";
+    object      Air.continuous;
+}
+
+dimensions      [0 0 0 0 0 0 0];
+
+internalField   uniform 0.872520890597;
+
+boundaryField
+{
+    walls
+    {
+        type            zeroGradient;
+    }
+}

@@ -1,0 +1,48 @@
+FoamFile
+{
+    version     2.0;
+    format      ascii;
+    class       volScalarField;
+    location    "0";
+    object      T;
+}
+
+dimensions      [0 0 0 1 0 0 0];
+
+internalField   uniform 293.15;
+
+boundaryField
+{
+    inlet
+    {
+        type        fixedValue;
+        value       $internalField;
+    }
+
+    outlet
+    {
+        type        inletOutlet;
+        inletValue  $internalField;
+        value       $internalField;
+    }
+
+    depositionWall
+    {
+        type        zeroGradient;
+    }
+
+    otherWalls
+    {
+        type        zeroGradient;
+    }
+
+    symm
+    {
+        type        symmetry;
+    }
+
+    empties
+    {
+        type        empty;
+    }
+}

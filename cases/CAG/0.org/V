@@ -1,0 +1,59 @@
+FoamFile
+{
+    version     2.0;
+    format      ascii;
+    class       volVectorField;
+    location    "0";
+    object      V;
+}
+
+dimensions      [0 1 -1 0 0 0 0];
+
+internalField   uniform (0 0 0);
+
+boundaryField
+{
+    inlet1-vapor
+    {
+        type        fixedValue;
+        value       $internalField;
+    }
+
+    inlet2-heating
+    {
+        type        fixedValue;
+        value       $internalField;
+    }
+
+    inlet3-cooling
+    {
+        type        fixedValue;
+        value       $internalField;
+    }
+
+    outlet
+    {
+        type        zeroGradient;
+    }
+
+    "wall.*"
+    {
+        type        zeroGradientDepositionVelocity;
+        value       $internalField;
+    }
+
+    front
+    {
+        type        wedge;
+    }
+
+    back
+    {
+        type        wedge;
+    }
+
+    axis
+    {
+        type        empty;
+    }
+}

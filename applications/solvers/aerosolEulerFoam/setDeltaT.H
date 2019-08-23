@@ -1,7 +1,7 @@
 /*---------------------------------------------------------------------------*\
 License
     AeroSolved
-    Copyright (C) 2017 Philip Morris International
+    Copyright (C) 2019 Philip Morris International
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -17,20 +17,21 @@ License
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 \*---------------------------------------------------------------------------*/
 
-/**
-
-\file setDeltaT.H
-\brief Set the time step size based on three CFL numbers
-
-This file is a copy of the default setDeltaT.H file from OpenFOAM, but also
-includes now two additional CFL numbers: a drift CFL and diffusional CFL
-number. The time step is limited by the maximum of the three CFL numbers.
-
-*/
-
 if (adjustTimeStep)
 {
-    scalar maxDeltaTFact = maxCo/(max(max(max(CoNum, driftCoNum), diffMCoNum), diffCorrYCoNum) + SMALL);
+    scalar maxConvDeltaTFact = maxCo/(CoNum + SMALL);
+    scalar maxAerosolDeltaTFact = maxAerosolCo/(aerosolCoNum + SMALL);
+    scalar maxDriftDeltaTFact = maxDriftCo/(driftCoNum + SMALL);
+
+    scalar maxDeltaTFact
+    (
+        min
+        (
+            min(maxConvDeltaTFact, maxAerosolDeltaTFact),
+            maxDriftDeltaTFact
+        )
+    );
+
     scalar deltaTFact = min(min(maxDeltaTFact, 1.0 + 0.1*maxDeltaTFact), 1.2);
 
     runTime.setDeltaT

@@ -1,0 +1,130 @@
+FoamFile
+{
+    version     2.0;
+    format      ascii;
+    class       dictionary;
+    location    "constant";
+    object      thermophysicalProperties.dispersed;
+}
+
+thermoType
+{
+    type            heAerosolRhoThermo;
+    mixture         aerosolPhase;
+    transport       const;
+    thermo          hConst;
+    energy          sensibleInternalEnergy;
+    equationOfState icoPolynomial;
+    specie          specie;
+}
+
+species
+{
+    Water
+    {
+        specie
+        {
+            molWeight   18.015;
+        }
+        equationOfState
+        {
+            rhoCoeffs<8>
+            (
+               -2.49525800e+02
+                1.15364500e+01
+               -3.44086500e-02
+                3.28071200e-05
+                0
+                0
+                0
+                0
+            );
+        }
+        thermodynamics
+        {
+            Cp          4195;
+            Hf          3.331E5;
+        }
+        transport
+        {
+            mu          3.645e-4;
+            Pr          2.289;
+        }
+        properties
+        {
+            sigma       VDI6 (0.15488 1.64129 -0.75986 -0.85291 1.14113 647.096);
+        }
+    }
+
+    PG
+    {
+        specie
+        {
+            molWeight   76.094;
+        }
+        equationOfState
+        {
+            rhoCoeffs<8>
+            (
+                1.32719257e+03
+               -1.50781184e+00
+                2.75307073e-03
+               -3.39180905e-06
+                0
+                0
+                0
+                0
+            );
+        }
+        thermodynamics
+        {
+            Cp          4195;
+            Hf          7.884E5;
+        }
+        transport
+        {
+            mu          3.645e-4;
+            Pr          2.289;
+        }
+        properties
+        {
+            sigma       VDI6 (0.07242 0.87291 0 0 0 626);
+        }
+    }
+
+    VG
+    {
+        specie
+        {
+            molWeight   92.09;
+        }
+        equationOfState
+        {
+            rhoCoeffs<8>
+            (
+                1.43415082e+03
+               -5.83106324e-01
+                1.11388044e-04
+               -4.60299240e-07
+                0
+                0
+                0
+                0
+            );
+        }
+        thermodynamics
+        {
+            Cp          4195;
+            Hf          9.957E5;
+        }
+        transport
+        {
+            mu          3.645e-4;
+            Pr          2.289;
+        }
+        properties
+        {
+            sigma       VDI6 (0.09019 0.80707 0 0 0 850);
+        }
+    }
+}

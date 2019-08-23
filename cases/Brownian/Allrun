@@ -1,0 +1,38 @@
+#!/bin/sh
+
+cd ${0%/*} || exit 1
+
+. $WM_PROJECT_DIR/bin/tools/RunFunctions
+. ../../scripts/AeroSolvedRunFunctions
+
+case $1 in
+
+    moment)
+        MODEL=twoMomentLogNormalAnalytical
+        MBC=twoMomentLogNormal
+        ;;
+
+    sectional)
+        MODEL=fixedSectional
+        MBC=sectionalLogNormal
+        ;;
+    *)
+        echo "Invalid aerosol model specified (sectional or moment)"
+        exit 1
+        ;;
+esac
+
+cp -r 0.org 0
+
+VARS="\
+    -DVARMBC=$MBC
+    -DVARMODEL=$MODEL \
+    "
+
+setMacros "$VARS"
+
+rm -f 0/*.m4
+
+runApplication blockMesh
+
+runApplication $(getApplication)

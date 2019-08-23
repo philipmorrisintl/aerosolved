@@ -1,0 +1,79 @@
+FoamFile
+{
+    version     2.0;
+    format      ascii;
+    class       dictionary;
+    location    "constant";
+    object      aerosolProperties;
+}
+
+aerosolModel    VARMODEL;
+
+diameter
+{
+    min     1E-9;
+    max     1E-3;
+}
+
+twoMomentLogNormalAnalyticalCoeffs
+{
+    sigma   4.0;
+}
+
+fixedSectionalCoeffs
+{
+    distribution
+    {
+        type    list;
+        y       (1.5806e-13 6.4836e-13 1.3242e-12 2.1439e-12 3.0855e-12 4.1349e-12 5.2820e-12 6.5191e-12 7.8400e-12 9.2398e-12 1.0714e-11 1.2260e-11 1.3873e-11 1.5551e-11 1.7293e-11 1.9094e-11 2.0955e-11);
+        x       (4.0321e-13 9.8628e-13 1.7340e-12 2.6147e-12 3.6102e-12 4.7085e-12 5.9006e-12 7.1796e-12 8.5399e-12 9.9770e-12 1.1487e-11 1.3066e-11 1.4712e-11 1.6422e-11 1.8193e-11 2.0024e-11);
+    }
+
+    interpolation
+    {
+        type    twoMoment;
+    }
+
+    rescale     false;
+
+    initFromPatch inlet;
+}
+
+submodels
+{
+    condensation
+    {
+        type        none;
+    }
+
+    nucleation
+    {
+        type        none;
+    }
+
+    coalescence
+    {
+        type        none;
+    }
+
+    driftFluxModel
+    {
+        diffusion
+        {
+            type        none;
+        }
+
+        Brownian
+        {
+            type        StokesEinstein;
+        }
+
+        inertial
+        {
+            type        VARINERTIALMODEL;
+            tolerance   1E-6;
+            maxIter     3;
+            VMax        10.0;
+        }
+    }
+}

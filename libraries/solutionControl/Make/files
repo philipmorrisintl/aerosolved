@@ -1,3 +1,0 @@
-pisoControl/pisoControl.C
-
-LIB = $(FOAM_USER_LIBBIN)/libpisoControl

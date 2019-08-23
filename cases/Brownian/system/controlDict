@@ -1,0 +1,56 @@
+FoamFile
+{
+    version     2.0;
+    format      ascii;
+    class       dictionary;
+    location    "system";
+    object      controlDict;
+}
+
+application     aerosolEulerFoam;
+
+startFrom       latestTime;
+
+startTime       0;
+
+stopAt          endTime;
+
+endTime         1E3;
+
+deltaT          1E-6;
+
+writeControl    adjustableRunTime;
+
+writeInterval   1E2;
+
+purgeWrite      0;
+
+writeFormat     ascii;
+
+writePrecision  20;
+
+writeCompression off;
+
+timeFormat      general;
+
+timePrecision   10;
+
+runTimeModifiable yes;
+
+adjustTimeStep  yes;
+
+maxCo           0.25;
+
+maxDeltaT       1;
+
+libs            ("libcustomFunctions.so");
+
+functions
+{
+    dcm
+    {
+        type            countMeanDiameter;
+        libs            ("libaerosolModels.so");
+        writeControl    writeTime;
+    }
+}

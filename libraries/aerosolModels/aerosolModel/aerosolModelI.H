@@ -1,7 +1,7 @@
 /*---------------------------------------------------------------------------*\
 License
     AeroSolved
-    Copyright (C) 2017 Philip Morris International
+    Copyright (C) 2019 Philip Morris International
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -19,298 +19,171 @@ License
 
 // * * * * * * * * * * * * * * * Member Functions  * * * * * * * * * * * * * //
 
-inline Foam::PtrList<Foam::volScalarField>& Foam::aerosolModel::M()
+inline Foam::aerosolThermo&
+Foam::aerosolModel::thermo()
 {
-    return M_;
+    return thermo_;
 }
 
-inline const Foam::PtrList<Foam::volScalarField>& Foam::aerosolModel::M() const
+
+inline const Foam::aerosolThermo&
+Foam::aerosolModel::thermo() const
 {
-    return M_;
+    return thermo_;
 }
 
-inline Foam::PtrList<Foam::volVectorField>& Foam::aerosolModel::V()
+
+inline const Foam::fvMesh& Foam::aerosolModel::mesh() const
 {
-    return V_;
+    return mesh_;
 }
 
-inline const Foam::PtrList<Foam::volVectorField>& Foam::aerosolModel::V() const
+
+inline Foam::driftFluxModel& Foam::aerosolModel::drift()
 {
-    return V_;
+    return drift_();
 }
 
-inline Foam::PtrList<Foam::volScalarField>& Foam::aerosolModel::S()
+
+inline const Foam::driftFluxModel& Foam::aerosolModel::drift() const
 {
-    return S_;
+    return drift_();
 }
 
-inline const Foam::PtrList<Foam::volScalarField>& Foam::aerosolModel::S() const
-{
-    return S_;
-}
 
-inline Foam::PtrList<Foam::volScalarField>& Foam::aerosolModel::J()
+inline const Foam::compressibleTurbulenceModel&
+Foam::aerosolModel::turbulence() const
 {
-    return J_;
-}
-
-inline const Foam::PtrList<Foam::volScalarField>& Foam::aerosolModel::J() const
-{
-    return J_;
-}
-
-inline Foam::PtrList<Foam::surfaceScalarField>& Foam::aerosolModel::phid()
-{
-    return phid_;
-}
-
-inline const Foam::PtrList<Foam::surfaceScalarField>& Foam::aerosolModel::phid() const
-{
-    return phid_;
-}
-
-inline Foam::volScalarField& Foam::aerosolModel::HvapS()
-{
-    return HvapS_;
-}
-
-inline const Foam::volScalarField& Foam::aerosolModel::HvapS() const
-{
-    return HvapS_;
-}
-
-inline const Foam::List<Foam::scalar>& Foam::aerosolModel::y() const
-{
-    return y_;
-}
-
-inline const Foam::List<Foam::scalar>& Foam::aerosolModel::x() const
-{
-    return x_;
-}
-
-inline Foam::label Foam::aerosolModel::P() const
-{
-    return P_;
-}
-
-inline Foam::label Foam::aerosolModel::q() const
-{
-    return q_;
-}
-
-inline Foam::dictionary& Foam::aerosolModel::params()
-{
-    return params_;
-}
-
-inline const Foam::dictionary& Foam::aerosolModel::params() const
-{
-    return params_;
-}
-
-inline const Foam::Switch& Foam::aerosolModel::doMonitors() const
-{
-    return doMonitors_;
-}
-
-inline const Foam::Switch& Foam::aerosolModel::doDrift() const
-{
-    return doDrift_;
-}
-
-inline const Foam::HashPtrTable<Foam::volScalarField>&
-Foam::aerosolModel::scalarMonitors() const
-{
-    return scalarMonitorPtrs_;
-}
-
-inline const Foam::HashPtrTable<Foam::volVectorField>&
-Foam::aerosolModel::vectorMonitors() const
-{
-    return vectorMonitorPtrs_;
-}
-
-inline bool Foam::aerosolModel::checkUpdateDropDriftVelFields() const
-{
-    return updateDropDriftVelFields;
-}
-
-inline bool Foam::aerosolModel::checkUpdateDropDriftVelField() const
-{
-    return updateDropDriftVelField;
-}
-
-inline bool Foam::aerosolModel::checkGetDropDiffFluxFields() const
-{
-    return getDropDiffFluxFields;
-}
-
-inline bool Foam::aerosolModel::checkGetDropDiffFluxField() const
-{
-    return getDropDiffFluxField;
-}
-
-inline bool Foam::aerosolModel::checkGetCondRateListCell() const
-{
-    return getCondRateListCell;
-}
-
-inline bool Foam::aerosolModel::checkGetCondRateList() const
-{
-    return getCondRateList;
-}
-
-inline bool Foam::aerosolModel::checkGetCondRateField() const
-{
-    return getCondRateField;
-}
-
-inline bool Foam::aerosolModel::checkGetCondRateFields() const
-{
-    return getCondRateFields;
-}
-
-inline bool Foam::aerosolModel::checkGetEtaGammaListCell() const
-{
-    return getEtaGammaListCell;
-}
-
-inline bool Foam::aerosolModel::checkGetEtaGammaList() const
-{
-    return getEtaGammaList;
-}
-
-inline bool Foam::aerosolModel::checkGetCoaRateField() const
-{
-    return getCoaRateField;
-}
-
-inline bool Foam::aerosolModel::checkGetCoaRateCell() const
-{
-    return getCoaRateCell;
-}
-
-inline bool Foam::aerosolModel::checkGetNucFields() const
-{
-    return getNucFields;
-}
-
-inline void Foam::aerosolModel::checkUpdateDropDriftVelFieldsOrExit() const
-{
-    if (!checkUpdateDropDriftVelFields())
+    if (!turbulencePtr_)
     {
-        FatalErrorIn("Foam::aerosolModels::checkUpdateDropDriftVelFieldsOrExit()")
-            << "No updateDropDriftVelFields function was set by a drop velocity model." << exit(FatalError);
+        FatalErrorInFunction
+            << "turbulencePtr_ is empty. Please use "
+            << "aerosolModel::setTurbulence "
+            << "(compressibleTurbulenceModel& )"
+            << abort(FatalError);
     }
+
+    return *turbulencePtr_;
 }
 
-inline void Foam::aerosolModel::checkUpdateDropDriftVelFieldOrExit() const
+
+inline const Foam::volScalarField& Foam::aerosolModel::rho() const
 {
-    if (!checkUpdateDropDriftVelField())
-    {
-        FatalErrorIn("Foam::aerosolModels::checkUpdateDropDriftVelFieldOrExit()")
-            << "No updateDropDriftVelField function was set by a drop velocity model." << exit(FatalError);
-    }
+    return turbulence().rho();
 }
 
-inline void Foam::aerosolModel::checkGetDropDiffFluxFieldsOrExit() const
+
+inline const Foam::surfaceScalarField& Foam::aerosolModel::phi() const
 {
-    if (!checkGetDropDiffFluxFields())
-    {
-        FatalErrorIn("Foam::aerosolModels::checkGetDropDiffFluxFieldsOrExit()")
-            << "No getDropDiffFluxFields function was set by a drop diffusion velocity model." << exit(FatalError);
-    }
+    return turbulence().alphaRhoPhi();
 }
 
-inline void Foam::aerosolModel::checkGetDropDiffFluxFieldOrExit() const
+inline const Foam::volVectorField& Foam::aerosolModel::U() const
 {
-    if (!checkGetDropDiffFluxField())
-    {
-        FatalErrorIn("Foam::aerosolModels::checkGetDropDiffFluxFieldOrExit()")
-            << "No getDropDiffFluxField function was set by a drop velocity model." << exit(FatalError);
-    }
+    return turbulence().U();
 }
 
-inline void Foam::aerosolModel::checkGetCondRateListCellOrExit() const
+
+inline void Foam::aerosolModel::setTurbulence
+(
+    compressibleTurbulenceModel& turbModel
+)
 {
-    if (!checkGetCondRateListCell())
-    {
-        FatalErrorIn("Foam::aerosolModels::checkGetCondRateListCellOrExit()")
-            << "No getCondRateListCell function was set by a condensation model." << exit(FatalError);
-    }
+    turbulencePtr_ = &turbModel;
 }
 
-inline void Foam::aerosolModel::checkGetCondRateListOrExit() const
+
+inline const Foam::dictionary& Foam::aerosolModel::coeffs() const
 {
-    if (!checkGetCondRateList())
-    {
-        FatalErrorIn("Foam::aerosolModels::checkGetCondRateListOrExit()")
-            << "No getCondRateList function was set by a condensation model." << exit(FatalError);
-    }
+    return coeffs_;
 }
 
-inline void Foam::aerosolModel::checkGetCondRateFieldOrExit() const
+inline const Foam::IOdictionary&
+Foam::aerosolModel::outputProperties() const
 {
-    if (!checkGetCondRateField())
+    if (!outputPropertiesPtr_.valid())
     {
-        FatalErrorIn("Foam::aerosolModels::checkGetCondRateFieldOrExit()")
-            << "No getCondRateField function was set by a condensation model." << exit(FatalError);
+        FatalErrorInFunction
+            << "outputProperties dictionary not available"
+            << abort(FatalError);
     }
+
+    return outputPropertiesPtr_();
 }
 
-inline void Foam::aerosolModel::checkGetCondRateFieldsOrExit() const
+
+inline Foam::IOdictionary&
+Foam::aerosolModel::outputProperties()
 {
-    if (!checkGetCondRateFields())
+    if (!outputPropertiesPtr_.valid())
     {
-        FatalErrorIn("Foam::aerosolModels::checkGetCondRateFieldsOrExit()")
-            << "No getCondRateFields function was set by a condensation model." << exit(FatalError);
+        FatalErrorInFunction
+            << "outputProperties dictionary not available"
+            << abort(FatalError);
     }
+
+    return outputPropertiesPtr_();
 }
 
-inline void Foam::aerosolModel::checkGetEtaGammaListCellOrExit() const
+inline const Foam::fv::convectionScheme<Foam::scalar>&
+Foam::aerosolModel::mvPhi() const
 {
-    if (!checkGetEtaGammaListCell())
-    {
-        FatalErrorIn("Foam::aerosolModels::checkGetEtaGammaListCellOrExit()")
-            << "No getEtaGammaListCell function was set by a condensation model." << exit(FatalError);
-    }
+    return mvPhi_();
 }
 
-inline void Foam::aerosolModel::checkGetEtaGammaListOrExit() const
+inline const Foam::fv::convectionScheme<Foam::scalar>&
+Foam::aerosolModel::mvPhiDrift() const
 {
-    if (!checkGetEtaGammaList())
-    {
-        FatalErrorIn("Foam::aerosolModels::checkGetEtaGammaListOrExit()")
-            << "No getEtaGammaList function was set by a condensation model." << exit(FatalError);
-    }
+    return mvPhiDrift_();
 }
 
-inline void Foam::aerosolModel::checkGetCoaRateFieldOrExit() const
+inline const Foam::fv::convectionScheme<Foam::scalar>&
+Foam::aerosolModel::mvPhiInertial() const
 {
-    if (!checkGetCoaRateField())
-    {
-        FatalErrorIn("Foam::aerosolModels::checkGetCoaRateFieldOrExit()")
-            << "No getCoaRateField function was set by a coalescence model." << exit(FatalError);
-    }
+    return mvPhiInertial_();
 }
 
-inline void Foam::aerosolModel::checkGetCoaRateCellOrExit() const
+inline const Foam::fv::convectionScheme<Foam::scalar>&
+Foam::aerosolModel::mvPhiBrownian() const
 {
-    if (!checkGetCoaRateCell())
-    {
-        FatalErrorIn("Foam::aerosolModels::checkGetCoaRateCellOrExit()")
-            << "No getCoaRateCell function was set by a coalescence model." << exit(FatalError);
-    }
+    return mvPhiBrownian_();
 }
 
-inline void Foam::aerosolModel::checkGetNucFieldsOrExit() const
+inline const Foam::surfaceScalarField& Foam::aerosolModel::phiDrift() const
 {
-    if (!checkGetNucFields())
-    {
-        FatalErrorIn("Foam::aerosolModels::checkGetCondRateOrExit()")
-            << "No getNucFields function was set by a nucleation model." << exit(FatalError);
-    }
+    return phiDrift_;
+}
+
+inline const Foam::volSymmTensorField& Foam::aerosolModel::tauDrift() const
+{
+    return tauDrift_;
+}
+
+inline const Foam::surfaceScalarField& Foam::aerosolModel::phiInertial() const
+{
+    return phiInertial_;
+}
+
+inline const Foam::surfaceScalarField& Foam::aerosolModel::phiBrownian() const
+{
+    return phiBrownian_;
+}
+
+inline const Foam::volScalarField& Foam::aerosolModel::DDisp() const
+{
+    return DDisp_;
+}
+
+inline const Foam::PtrList<Foam::volScalarField>&
+Foam::aerosolModel::DCont() const
+{
+    return DCont_;
+}
+
+inline const Foam::PtrList<Foam::surfaceScalarField>&
+Foam::aerosolModel::phiEff() const
+{
+    return phiEff_;
 }
 
 // ************************************************************************* //

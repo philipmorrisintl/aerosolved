@@ -1,9 +1,0 @@
-coalescenceModel/coalescenceModel.C
-coalescenceModel/coalescenceModelNew.C
-
-LeeChenLogNormal/LeeChenLogNormal.C
-LeeChen/LeeChen.C
-zeroTerm/zeroTerm.C
-
-LIB = $(FOAM_USER_LIBBIN)/libcoalescenceModels
-

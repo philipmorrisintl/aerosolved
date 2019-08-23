@@ -1,7 +1,7 @@
 /*---------------------------------------------------------------------------*\
 License
     AeroSolved
-    Copyright (C) 2017 Philip Morris International
+    Copyright (C) 2019 Philip Morris International
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -20,173 +20,138 @@ License
 /**
 
 \file aerosolModel.H
-\brief Aerosol models
+\brief Main aerosol model base class
 
-This library is concerned with all information regarding that what makes a
-mixture an aerosol; it contains a list of \f$M_i\f$ number concentration fields,
-a list of \f$\mathbf{v}_i\f$ velocity fields, aerosol source terms and general
-information about the description of the disperse character of an aerosol. Also
-a number of general member functions are included, such as the
-`updateSizeDistribution' routine which sets the distribution of sections given a
-certain type of distribution (e.g., `none', `linear', `logarithmic', `geometric'
-or `list') or the `limitWallFlux' function which clips a flux field to
-positivity at all patches which are of type `wall'.
-
-The aerosolModels library contains a pointer of type `fluidThermo'. Upon
-construction of the aerosolModels library a fluidThermo library is also
-automatically created and the pointer is set to point to this fluidThermo
-library. This means that the user should not create a new separate fluidThermo
-object next to the aerosolModels object, but should rather use the fluidThermo
-object from the aerosol model. This is accessible via the `thermo()' member
-function of the aerosolModels library.
+This class contains the implementation of different aerosol models, which are
+responsible for the modeling of the Population Balance Equation (PBE).
+Ultimately, the goal of solving the PBE (either in its true form, or in terms of
+its moments) is to produce size information on the distribution of particles,
+locally. In turn, this size information provides sub-models such as the
+condensationModel and the driftFluxModel with relevant average diameters. The
+aerosolModel class is the most important class in AeroSolved, and also contains
+the aerosolThermo class, which describes the thermodynamical state of the
+two-phase (i.e., continuous phase and dispersed phase) mixture.
 
 */
 
 #ifndef aerosolModel_H
 #define aerosolModel_H
 
-#include <boost/function.hpp>
-#include <boost/bind.hpp>
-
-#include "IOdictionary.H"
 #include "autoPtr.H"
-#include "runTimeSelectionTables.H"
-#include "fvm.H"
-#include "fluidThermo.H"
-#include "fvMatrices.H"
-#include "HashPtrTable.H"
+#include "aerosolThermo.H"
+#include "condensationModel.H"
+#include "nucleationModel.H"
+#include "coalescenceModel.H"
+#include "driftFluxModel.H"
+#include "IOdictionary.H"
+#include "turbulentFluidThermoModel.H"
+#include "multivariateScheme.H"
+#include "convectionScheme.H"
+#include "ListFieldFunction.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
-
-//- Model type identifier
-enum aerosolModelType
-{
-    MOMENTAEROSOLMODEL = 0,
-    SECTIONALAEROSOLMODEL = 1
-};
-
-//- Droplet size distribution type
-enum aerosolSizeDistributionType
-{
-    NOSIZEDIST = 0,
-    LINEARSIZEDIST = 1,
-    LOGARITHMICSIZEDIST = 2,
-    GEOMETRICSIZEDIST = 3,
-    LIST = 4
-};
-
-enum aerosolSizePositionType
-{
-    NOSIZEPOS = 0,
-    CENTERSIZEPOS = 1,
-    INTERFACESIZEPOS = 2
-};
-
-enum distMethod
-{
-    TWOMOMENT = 0,
-    FOURMOMENT = 1,
-    HYBRID = 2
-};
 
 namespace Foam
 {
 
 /*---------------------------------------------------------------------------*\
-                     class aerosolModel Declaration
+                     Class aerosolModel Declaration
 \*---------------------------------------------------------------------------*/
 
 class aerosolModel
 :
     public IOdictionary
 {
-public:
+    // Private Member Functions
 
-    // Data types
+        //- Disallow copy construct
+        aerosolModel(const aerosolModel&);
 
-        static const NamedEnum<aerosolModelType, 2> modelTypeNames;
-        static const NamedEnum<aerosolSizeDistributionType, 5> sizeDistributionTypeNames;
-        static const NamedEnum<aerosolSizePositionType, 3> sizePositionTypeNames;
-        static const NamedEnum<distMethod, 3> distMethodNames;
+        //- Disallow default bitwise assignment
+        void operator=(const aerosolModel&);
 
+
+        //- the local time-scale
+        autoPtr<scalarField> rDeltaT_;
 
 protected:
 
     // Protected data
 
+        //- Thermo model
+        aerosolThermo thermo_;
+
+        //- Reference to the turbulence model
+        compressibleTurbulenceModel* turbulencePtr_;
+
         //- Reference to the mesh database
         const fvMesh& mesh_;
 
-        //- Pointer to fluid thermo model
-        autoPtr<fluidThermo> thermoPtr_;
+        //- Dictionary of the model
+        dictionary coeffs_;
 
-        //- Droplet number concentrations per unit mass \f$M_i\f$
-        PtrList<volScalarField> M_;
+        //- Model type
+        const word modelType_;
 
-        //- Pointer to droplet velocity fields \f$\mathbf{v}_i\f$
-        PtrList<volVectorField> V_;
+        //- Dictionary of output properties
+        autoPtr<IOdictionary> outputPropertiesPtr_;
 
-        //- Total mass transfer rate for each species
-        PtrList<volScalarField> S_;
+        //- Condensation model
+        autoPtr<condensationModel> condensation_;
 
-        //- Total droplet number concentration source term
-        PtrList<volScalarField> J_;
+        //- Nucleation model
+        autoPtr<nucleationModel> nucleation_;
 
-        //- List of droplet fluxes
-        PtrList<surfaceScalarField> phid_;
+        //- Coalescence model
+        autoPtr<coalescenceModel> coalescence_;
 
-        //- Enthalpy of vaporization source term
-        volScalarField HvapS_;
+        //- Drift flux model
+        autoPtr<driftFluxModel> drift_;
 
-        //- List of section boundary positions \f$y_i\f$
-        List<scalar> y_;
+        //- Multivariate convection scheme for phi
+        tmp<fv::convectionScheme<scalar>> mvPhi_;
 
-        //- List of representative droplet sizes \f$x_i\f$, for each section
-        List<scalar> x_;
+        //- Multivariate convection scheme for phiDrift
+        tmp<fv::convectionScheme<scalar>> mvPhiDrift_;
 
-        //- Number of sections \f$\mathcal{P}\f$
-        label P_;
+        //- Multivariate convection scheme for phiInertial
+        tmp<fv::convectionScheme<scalar>> mvPhiInertial_;
 
-        //- Logarithmic size distribution power (see equation (18) in
-        //- Lister:1995aa, although, in contrast with this work, here q_ is for
-        //- generality a scalar, not an integer. Also, to scale the
-        //- distribution between yMin and yMax, the factor 2 is replaced with
-        //- a, which is computed using a = (yMax/yMin)^(q/P))
-        scalar q_;
+        //- Multivariate convection scheme for phiBrownian
+        tmp<fv::convectionScheme<scalar>> mvPhiBrownian_;
 
-        //- Lower limit of the size distribution
-        scalar yMin_;
+        //- Table of fields for multivariate convection
+        multivariateSurfaceInterpolationScheme<scalar>::fieldTable fields_;
 
-        //- Upper limit of the size distribution
-        scalar yMax_;
+        //- Minimum allowable diameter
+        scalar dMin_;
 
-        //- Type of droplet size distribution
-        aerosolSizeDistributionType sizeDistType_;
+        //- Maximum allowable diameter
+        scalar dMax_;
 
-        //- Dictionary of aerosol model parameters
-        dictionary params_;
+        //- Corrective mass fraction drift flux [kg/s]
+        surfaceScalarField phiDrift_;
 
-        //- Switches
-        Switch doDrift_;
-        Switch doCoa_;
-        Switch doNuc_;
-        Switch doCond_;
-        Switch doCorrSizeDist_;
-        Switch doMonitors_;
+        //- Mixture drift stress tensor [kg/m/s^2]
+        volSymmTensorField tauDrift_;
 
-        //- Monitor field hashed pointer table
-        HashPtrTable<volScalarField> scalarMonitorPtrs_;
-        HashPtrTable<volVectorField> vectorMonitorPtrs_;
+        //- Inertial dispersed mass fraction drift flux [kg/s]
+        surfaceScalarField phiInertial_;
 
-private:
+        //- Brownian dispersed mass fraction drift flux [kg/s]
+        surfaceScalarField phiBrownian_;
 
-    // Private Member Functions
+        //- Dispersed mass fraction diffusivity [m^2/s]
+        volScalarField DDisp_;
 
-        //- Construct as copy (not implemented)
-        aerosolModel(const aerosolModel&);
+        //- Continuous mass fraction diffusivities [m^2/s]
+        PtrList<volScalarField> DCont_;
 
-        //- Disallow default bitwise assignment
-        void operator=(const aerosolModel&);
+        //- Alpha residual for numerical stability
+        dimensionedScalar residualAlpha_;
+
+        //- List of effective particle number flux fields, used as monitor
+        PtrList<surfaceScalarField> phiEff_;
 
 
 public:
@@ -194,6 +159,8 @@ public:
     //- Runtime type information
     TypeName("aerosolModel");
 
+    //- Default aerosolProperties dictionary name
+    static const word aerosolPropertiesName;
 
     //- Declare run-time constructor selection tables
     declareRunTimeSelectionTable
@@ -202,332 +169,152 @@ public:
         aerosolModel,
         dictionary,
         (
-            const fvMesh& mesh
+            const word& modelType,
+            const fvMesh& mesh,
+            const word& aerosolProperties
         ),
-        (mesh)
+        (modelType, mesh, aerosolProperties)
     );
-
 
     // Constructors
 
         //- Construct from components
-        aerosolModel(const fvMesh& mesh);
-
+        aerosolModel
+        (
+            const word& modelType,
+            const fvMesh& mesh,
+            const word& aerosolProperties=aerosolPropertiesName
+        );
 
     //- Selector
-    static autoPtr<aerosolModel> New(const fvMesh& mesh);
+    static autoPtr<aerosolModel> New
+    (
+        const fvMesh& mesh,
+        const word& aerosolProperties=aerosolPropertiesName
+    );
 
 
     //- Destructor
     virtual ~aerosolModel();
 
-    //- Function pointers
-
-        //- Return the drop velocity fields for a given list of droplet sizes
-        boost::function< void () > updateDropDriftVelFields;
-
-        //- Return the drop velocity field for a given field of droplet diameters
-        boost::function< void
-        (
-            const volScalarField&
-        ) > updateDropDriftVelField;
-
-        //- Return the drop diffusion velocity fields for a given list of
-        //- droplet sizes
-        boost::function< PtrList<surfaceScalarField>& () > getDropDiffFluxFields;
-
-        //- Return the drop diffusion velocity field for a given field of
-        //- droplet diameters
-        boost::function< PtrList<surfaceScalarField>&
-        (
-            const volScalarField&
-        ) > getDropDiffFluxField;
-
-        //- Return the condensation rate for a given cell, for a list of droplet
-        //- diameters and a for each species
-        boost::function< List<List<scalar> >
-        (
-            const List<scalar>&,
-            const label
-        ) > getCondRateListCell;
-
-        //- Return the condensation rate field for a list of droplet diameters
-        //- and for each species
-        boost::function< PtrList<PtrList<volScalarField> >&
-        (
-            const List<scalar>&
-        ) > getCondRateList;
-
-        //- Return the condensation rate for a list of droplet diameter fields
-        //- and for each species
-        boost::function< PtrList<PtrList<volScalarField> >&
-        (
-            const PtrList<volScalarField>&
-        ) > getCondRateFields;
-
-        //- Return the condensation rate for a droplet diameter field and for
-        //- each species
-        boost::function< PtrList<PtrList<volScalarField> >&
-        (
-            volScalarField&
-        ) > getCondRateField;
-
-        //- Return the \f$\eta\f$-space droplet sizes and the \f$d\f$-independent
-        //- characteristic condensational growth velocities for each species,
-        //- for the condensational growth sub problem for a list of droplet
-        //- diameters and given cell
-        boost::function< List<List<scalar> >
-        (
-            const List<scalar>&,
-            const label
-        ) > getEtaGammaListCell;
-
-        //- Return the \f$\eta\f$-space droplet sizes and the \f$d\f$-independent
-        //- characteristic condensational growth velocities for each species,
-        //- for the condensational growth sub problem for a list of droplet
-        //- diameters
-        boost::function< PtrList<PtrList<volScalarField> >&
-        (
-            const List<scalar>&
-        ) > getEtaGammaList;
-
-        //- Return droplet diameter for a given list of zetas and cell index
-        boost::function< List<scalar>
-        (
-            const List<scalar>&,
-            const label
-        ) > psiInv;
-
-        //- Return a coalescence rate field for a given combination of droplet
-        //- sizes
-        boost::function< tmp<volScalarField>
-        (
-            const scalar,
-            const scalar,
-            const volScalarField&
-        ) > getCoaRateField;
-
-        //- Return the coalescence rate for a given combination of droplet sizes
-        //- and cell
-        boost::function< scalar
-        (
-            const scalar,
-            const scalar,
-            const label,
-            const scalar
-        ) > getCoaRateCell;
-
-        //- Return the nucleation droplet and mass rates and critical nucleation
-        //- cluster diameter
-        boost::function< PtrList<volScalarField>& () > getNucFields;
-
 
     // Member Functions
 
-        static const word dictName;
+        //- Return access to the thermo package
+        inline aerosolThermo& thermo();
 
-        // Access
+        //- Return access to the thermo package
+        inline const aerosolThermo& thermo() const;
 
-            //- Return access to the thermo package
-            virtual fluidThermo& thermo();
+        //- Return access to the mesh database
+        inline const fvMesh& mesh() const;
 
-            //- Return const access to the thermo package
-            virtual const fluidThermo& thermo() const;
+        //- Return access to the drift flux model
+        inline driftFluxModel& drift();
 
-            //- Return access to the mesh
-            const fvMesh& mesh() const;
+        //- Return access to the drift flux model
+        inline const driftFluxModel& drift() const;
 
-            //- Return section droplet number concentration per unit mass
-            //- \f$M_i\f$
-            inline PtrList<volScalarField>& M();
-            inline const PtrList<volScalarField>& M() const;
+        //- Set turbulence
+        inline void setTurbulence(compressibleTurbulenceModel& turbModel);
 
-            //- Return total mass transfer rate for each species
-            inline PtrList<volScalarField>& S();
-            inline const PtrList<volScalarField>& S() const;
+        //- Return access to turbulence
+        inline const compressibleTurbulenceModel& turbulence() const;
 
-            //- Return total nucleation rates
-            inline PtrList<volScalarField>& J();
-            inline const PtrList<volScalarField>& J() const;
+        //- Return access to rho
+        inline const volScalarField& rho() const;
 
-            //- Return droplet flux fields
-            inline PtrList<surfaceScalarField>& phid();
-            inline const PtrList<surfaceScalarField>& phid() const;
+        //- Return access to phi
+        inline const surfaceScalarField& phi() const;
 
-            //- Return section droplet velocity \f$\mathbf{v}_i\f$
-            inline PtrList<volVectorField>& V();
-            inline const PtrList<volVectorField>& V() const;
+        //- Return access to U
+        inline const volVectorField& U() const;
 
-            //- Return heat of vaporization
-            inline volScalarField& HvapS();
-            inline const volScalarField& HvapS() const;
+        //- Return const dictionary of the model
+        inline const dictionary& coeffs() const;
 
-            //- Return the type of model (pure virtual)
-            virtual label modType() const = 0;
+        //- Correct the aerosol model
+        virtual void correct();
 
-            //- Return the size distribution type (pure virtual)
-            virtual label sizeDistType() const = 0;
+        //- Correct the underlying aerosol model
+        virtual void correctModel() = 0;
 
-            //- Return a reference to the dimension of the droplet size
-            //- (e.g., mass, radius, volume), if applicable (pure virtual)
-            virtual const dimensionSet& dropletSizeDimension() const = 0;
+        //- Solution step before the mass fraction solution
+        virtual void solvePre() = 0;
 
-            //- Return a reference to the representative droplet sizes, for each
-            //- section
-            inline const List<scalar>& x() const;
+        //- Solution step after the mass fraction solution
+        virtual void solvePost() = 0;
 
-            //- Return a reference to the section boundary positions
-            inline const List<scalar>& y() const;
+        //- Right-hand side source term
+        virtual tmp<fvScalarMatrix> R(const volScalarField& Y) const = 0;
 
-            //- Return the number of sections
-            inline label P() const;
+        //- Heat release rate
+        virtual tmp<volScalarField> Qdot() const = 0;
 
-            //- Return the logarithmic size distribution power
-            inline label q() const;
-
-            //- Return parameter dictionary
-            inline dictionary& params();
-            inline const dictionary& params() const;
-
-            //- Return const access to doMonitors_
-            inline const Switch& doMonitors() const;
-
-            //- Return const access to doDrift
-            inline const Switch& doDrift() const;
-
-            //- Return const access to monitor fields
-            inline const HashPtrTable<volScalarField>& scalarMonitors() const;
-            inline const HashPtrTable<volVectorField>& vectorMonitors() const;
-
-
-        // Functions
-
-            //- Update the size distribution. The default one accepts 'none',
-            //- 'linear' and 'sectional' as aerosolSizeDistributionType. May be
-            //- overwritten by model.
-            virtual void updateSizeDistribution();
-
-            //- Update
-            virtual void update() = 0;
-
-            //- Fractional step
-            virtual void fractionalStepInternal() = 0;
-            virtual void fractionalStepExternal() = 0;
-
-            //- Check consistency of the model
-            virtual void checkConsistency() = 0;
-
-            //- Correct size distribution
-            virtual void correctSizeDistribution() = 0;
-
-            //- Compute count mean diameter (pure virtual)
-            virtual tmp<volScalarField> dcm() = 0;
-
-            //- Compute mass mean diameter (pure virtual)
-            virtual tmp<volScalarField> dmm() = 0;
-
-            //- Limit wall fluxes
-            virtual void limitWallFlux(surfaceScalarField& phi) const;
-
-            //- Set monitor fields
-            void setMonitors();
-
-            //- Clear monitor fields
-            void clearMonitors();
-
-            //- Clear scalar monitor fields
-            void clearScalarMonitors();
-
-            //- Clear vector monitor fields
-            void clearVectorMonitors();
-
-            //- Update heat of vaporization term
-            void updateHvapS();
-
-            //- Check if the updateDropDriftVelFields function pointer is set
-            inline bool checkUpdateDropDriftVelFields() const;
-
-            //- Check if the updateDropDriftVelField function pointer is set
-            inline bool checkUpdateDropDriftVelField() const;
-
-            //- Check if the getDropDiffFluxFields function pointer is set
-            inline bool checkGetDropDiffFluxFields() const;
-
-            //- Check if the getDropDiffFluxField function pointer is set
-            inline bool checkGetDropDiffFluxField() const;
-
-            //- Check if the getCondRateListCell function pointer is set
-            inline bool checkGetCondRateListCell() const;
-
-            //- Check if the getCondRateList function pointer is set
-            inline bool checkGetCondRateList() const;
-
-            //- Check if the getCondRateField function pointer is set
-            inline bool checkGetCondRateField() const;
-
-            //- Check if the getCondRateFields function pointer is set
-            inline bool checkGetCondRateFields() const;
-
-            //- Check if the getEtaGammaListCell function pointer is set
-            inline bool checkGetEtaGammaListCell() const;
-
-            //- Check if the getEtaGammaList function pointer is set
-            inline bool checkGetEtaGammaList() const;
-
-            //- Check if the getCoaRateField function pointer is set
-            inline bool checkGetCoaRateField() const;
-
-            //- Check if the getCoaRateCell function pointer is set
-            inline bool checkGetCoaRateCell() const;
-
-            //- Check if the getNucFields function pointer is set
-            inline bool checkGetNucFields() const;
-
-            //- Check if the updateDropDriftVelFields function pointer is set, else exit
-            inline void checkUpdateDropDriftVelFieldsOrExit() const;
-
-            //- Check if the updateDropDriftVelField function pointer is set, else exit
-            inline void checkUpdateDropDriftVelFieldOrExit() const;
-
-            //- Check if the getDropDiffFluxFields function pointer is set, else exit
-            inline void checkGetDropDiffFluxFieldsOrExit() const;
-
-            //- Check if the getDropDiffFluxField function pointer is set, else exit
-            inline void checkGetDropDiffFluxFieldOrExit() const;
-
-            //- Check if the getCondRateListCell function pointer is set, else exit
-            inline void checkGetCondRateListCellOrExit() const;
-
-            //- Check if the getCondRateList function pointer is set, else exit
-            inline void checkGetCondRateListOrExit() const;
-
-            //- Check if the getCondRateField function pointer is set, else exit
-            inline void checkGetCondRateFieldOrExit() const;
-
-            //- Check if the getCondRateFields function pointer is set, else exit
-            inline void checkGetCondRateFieldsOrExit() const;
-
-            //- Check if the getEtaGammaListCell function pointer is set, else exit
-            inline void checkGetEtaGammaListCellOrExit() const;
-
-            //- Check if the getEtaGammaList function pointer is set, else exit
-            inline void checkGetEtaGammaListOrExit() const;
-
-            //- Check if the getCoaRateField function pointer is set, else exit
-            inline void checkGetCoaRateFieldOrExit() const;
-
-            //- Check if the getCoaRateCell function pointer is set, else exit
-            inline void checkGetCoaRateCellOrExit() const;
-
-            //- Check if the getNucFields function pointer is set, else exit
-            inline void checkGetNucFieldsOrExit() const;
-
-
-    // I-O
-
-        //- Read info from dictionaries
+        //- Update properties from given dictionary
         virtual bool read();
 
+        //- Return access to the output properties dictionary
+        inline const IOdictionary& outputProperties() const;
+
+        //- Return output properties dictionary
+        inline IOdictionary& outputProperties();
+
+        //- Return reference to multivariate convectionScheme for phi
+        inline const fv::convectionScheme<scalar>& mvPhi() const;
+
+        //- Return reference to multivariate convectionScheme for phiDrift
+        inline const fv::convectionScheme<scalar>& mvPhiDrift() const;
+
+        //- Return reference to multivariate convectionScheme for phiInertial
+        inline const fv::convectionScheme<scalar>& mvPhiInertial() const;
+
+        //- Return reference to multivariate convectionScheme for phiBrownian
+        inline const fv::convectionScheme<scalar>& mvPhiBrownian() const;
+
+        //- Return the mean diameter related to the moment p and q ratio
+        virtual tmp<volScalarField> meanDiameter
+        (
+            const scalar p,
+            const scalar q
+        ) const = 0;
+
+        //- Return the median diameter related to the moment p
+        virtual tmp<volScalarField> medianDiameter(const scalar p) const = 0;
+
+        inline scalar dMin() const
+        {
+            return dMin_;
+        }
+
+        inline scalar dMax() const
+        {
+            return dMax_;
+        }
+
+        //- Return access to the corrective mass fraction drift flux
+        inline const surfaceScalarField& phiDrift() const;
+
+        //- Return access to the mixture drift stress tensor
+        inline const volSymmTensorField& tauDrift() const;
+
+        //- Return access to the inertial dispersed mass fraction drift flux
+        inline const surfaceScalarField& phiInertial() const;
+
+        //- Return access to the Brownian dispersed mass fraction drift flux
+        inline const surfaceScalarField& phiBrownian() const;
+
+        //- Return access to the dispersed mass fraction diffusivity
+        inline const volScalarField& DDisp() const;
+
+        //- Return access to the continuous mass fraction diffusivities
+        inline const PtrList<volScalarField>& DCont() const;
+
+        //- Return access to the effective droplet number flux fields list
+        inline const PtrList<surfaceScalarField>& phiEff() const;
+
+        //- get the timescale in the cells.
+        tmp<scalarField> getRDeltaT();
 };
 
 
@@ -544,4 +331,3 @@ public:
 #endif
 
 // ************************************************************************* //
-

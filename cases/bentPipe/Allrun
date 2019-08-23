@@ -1,0 +1,171 @@
+#!/bin/sh
+
+cd ${0%/*} || exit 1
+
+. $WM_PROJECT_DIR/bin/tools/RunFunctions
+. ../../scripts/AeroSolvedRunFunctions
+
+checkPython3
+
+# Mesh settings
+
+R=5E-3          # Pipe radius [m]
+H=2E-3          # Bulk block half-height [m]
+NR=10           # Number of cells over one radius
+DRWALL=1E-4     # Radial cell size at the wall [m]
+
+# Read input
+
+if ! [[ $1 =~ ^(fullStokes|Manninen)$ ]]; then
+    echo "Invalid inertial model (fullStokes or Manninen)"
+    exit 1
+else
+    INERTIALMODEL=$1
+fi
+
+case $2 in
+
+    moment)
+        MODEL=twoMomentLogNormalAnalytical
+        FLUXTYPE=twoMomentFlux
+        MINLETBCNAME=twoMomentLogNormal
+        ;;
+
+    sectional)
+        MODEL=fixedSectional
+        FLUXTYPE=sectionalFlux
+        MINLETBCNAME=sectionalLogNormal
+        ;;
+    *)
+        echo "Invalid aerosol model specified (sectional or moment)"
+        exit 1
+        ;;
+esac
+
+cp -r 0.org 0
+
+# Compute mesh variables
+
+MATH="import math as m"
+
+F1=$(echo "$MATH; print(2.0**(1.0/2.0))" | python3)
+F2=$(echo "$MATH; print(2.0**(1.0/3.0))" | python3)
+
+X0=0
+X1=$(echo "$MATH; print(6.0*$R+$R*5.7*m.pi/2)" | python3)
+
+Y0=$(echo "$MATH; print(-$R/$F1)" | python3)
+Y1=$(echo "$MATH; print($R/$F1)" | python3)
+Y2=$(echo "$MATH; print($R/$F1)" | python3)
+Y3=$(echo "$MATH; print(-$R/$F1)" | python3)
+
+Y4=-$H
+Y5=$H
+Y6=$H
+Y7=-$H
+
+Z0=$(echo "$MATH; print(-$R/$F1)" | python3)
+Z1=$(echo "$MATH; print(-$R/$F1)" | python3)
+Z2=$(echo "$MATH; print($R/$F1)" | python3)
+Z3=$(echo "$MATH; print($R/$F1)" | python3)
+
+Z4=-$H
+Z5=-$H
+Z6=$H
+Z7=$H
+
+EY0=0.0
+EY1=$R
+EY2=0.0
+EY3=-$R
+
+EZ0=-$R
+EZ1=0.0
+EZ2=$R
+EZ3=0.0
+
+EBY0=0.0
+EBY1=$(echo "$MATH; print( $H*$F2)" | python3)
+EBY2=0.0
+EBY3=$(echo "$MATH; print(-$H*$F2)" | python3)
+
+EBZ0=$(echo "$MATH; print(-$H*$F2)" | python3)
+EBZ1=0.0
+EBZ2=$(echo "$MATH; print( $H*$F2)" | python3)
+EBZ3=0.0
+
+DR=$(echo "$MATH; print($R/$NR)" | python3)
+NBULK=$(echo "$MATH; print( int(round(2.0*$H/$DR)) )" | python3)
+
+GBL=$(echo "$MATH; print($DRWALL/$DR)" | python3)
+GBLi=$(echo "$MATH; print(1.0/$GBL)" | python3)
+QBL=$(echo "$MATH; print((($R-$H*$F2)-$DR)/(($R-$H*$F2)-$DRWALL))" | python3)
+NBL=$(echo "$MATH; print( int(round(m.log($GBL)/m.log($QBL)+1))  )" | python3)
+
+NX=$(echo "$MATH; print( int(round(($X1-$X0)/$DR/2.0)) )" | python3)
+
+VARS="\
+    -DVARINERTIALMODEL=$INERTIALMODEL \
+    -DVARMODEL=$MODEL \
+    -DVARFLUXTYPE=$FLUXTYPE \
+    -DVARMINLETBCNAME=$MINLETBCNAME \
+    -DVARX0=$X0 \
+    -DVARX1=$X1 \
+    -DVARY0=$Y0 \
+    -DVARY1=$Y1 \
+    -DVARY2=$Y2 \
+    -DVARY3=$Y3 \
+    -DVARY4=$Y4 \
+    -DVARY5=$Y5 \
+    -DVARY6=$Y6 \
+    -DVARY7=$Y7 \
+    -DVARZ0=$Z0 \
+    -DVARZ1=$Z1 \
+    -DVARZ2=$Z2 \
+    -DVARZ3=$Z3 \
+    -DVARZ4=$Z4 \
+    -DVARZ5=$Z5 \
+    -DVARZ6=$Z6 \
+    -DVARZ7=$Z7 \
+    -DVAREY0=$EY0 \
+    -DVAREY1=$EY1 \
+    -DVAREY2=$EY2 \
+    -DVAREY3=$EY3 \
+    -DVAREZ0=$EZ0 \
+    -DVAREZ1=$EZ1 \
+    -DVAREZ2=$EZ2 \
+    -DVAREZ3=$EZ3 \
+    -DVAREBY0=$EBY0 \
+    -DVAREBY1=$EBY1 \
+    -DVAREBY2=$EBY2 \
+    -DVAREBY3=$EBY3 \
+    -DVAREBZ0=$EBZ0 \
+    -DVAREBZ1=$EBZ1 \
+    -DVAREBZ2=$EBZ2 \
+    -DVAREBZ3=$EBZ3 \
+    -DVARNBULK=$NBULK \
+    -DVARNBL=$NBL \
+    -DVARNX=$NX \
+    -DVARGBL=$GBL \
+    -DVARGBLi=$GBLi \
+    "
+
+setMacros "$VARS"
+
+rm -f 0/*.m4
+
+runApplication blockMesh
+
+wmake bendPipe
+
+runApplication bendPipe -latestTime
+
+runApplication decomposePar
+
+runParallel $(getApplication)
+
+#if [ "$MODEL" == "fixedSectional" ]; then
+
+#    runApplication python3 plot.py
+
+#fi

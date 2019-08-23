@@ -1,0 +1,75 @@
+FoamFile
+{
+    version     2.0;
+    format      ascii;
+    class       dictionary;
+    location    "constant";
+    object      thermophysicalProperties.continuous;
+}
+
+thermoType
+{
+    type            heAerosolRhoThermo;
+    mixture         aerosolPhase;
+    transport       const;
+    thermo          hConst;
+    energy          sensibleInternalEnergy;
+    equationOfState perfectGas;
+    specie          specie;
+}
+
+species
+{
+    ArtificialFluid
+    {
+        specie
+        {
+            molWeight       24.373; // Gives density of unity at normal conditions
+        }
+        thermodynamics
+        {
+            Cp              1e3;
+            Hf              0;
+        }
+        transport
+        {
+            mu              0.01;
+            Pr              1;
+        }
+        diffusivities
+        {
+            ArtificialFluid FullerSchettlerGiddings;
+            Water           FullerSchettlerGiddings;
+        }
+        properties
+        {
+            Vd              constant 19.7;
+        }
+    }
+
+    Water
+    {
+        specie
+        {
+            molWeight       18.0153;
+        }
+        thermodynamics
+        {
+            Cp              1e3;
+            Hf              0;
+        }
+        transport
+        {
+            mu              0.01;
+            Pr              1;
+        }
+        diffusivities
+        {
+            Water           FullerSchettlerGiddings;
+        }
+        properties
+        {
+            Vd              constant 20;
+        }
+    }
+}

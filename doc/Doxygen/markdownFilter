@@ -1,0 +1,7 @@
+if [ "$#" -gt 0 ]
+then
+
+    # Provide filename which is relative to the current path (i.e., the path in which Doxygen is executed)
+
+    python doc/Doxygen/markdownFilter.py $(realpath --relative-to="." $1)
+fi

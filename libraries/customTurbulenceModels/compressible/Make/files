@@ -1,0 +1,3 @@
+customCompressibleTurbulenceModels.C
+
+LIB = $(FOAM_USER_LIBBIN)/libcustomCompressibleTurbulenceModels

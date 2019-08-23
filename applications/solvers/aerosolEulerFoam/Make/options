@@ -1,35 +1,31 @@
 EXE_INC = \
     -I$(LIB_SRC)/finiteVolume/lnInclude \
     -I$(LIB_SRC)/meshTools/lnInclude \
+    -I$(LIB_SRC)/sampling/lnInclude \
+    -I$(LIB_SRC)/TurbulenceModels/turbulenceModels/lnInclude \
+    -I$(LIB_SRC)/TurbulenceModels/compressible/lnInclude \
+    -I$(LIB_SRC)/thermophysicalModels/specie/lnInclude \
+    -I$(LIB_SRC)/transportModels/compressible/lnInclude \
+    -I$(LIB_SRC)/thermophysicalModels/basic/lnInclude \
+    -I$(LIB_SRC)/thermophysicalModels/reactionThermo/lnInclude \
+    -I../../../libraries/aerosolThermo/lnInclude \
     -I../../../libraries/aerosolModels/lnInclude \
-    -I../../../libraries/fluidThermo/lnInclude \
-    -I../../../libraries/driftVelocityModels/lnInclude \
-    -I../../../libraries/nucleationModels/lnInclude \
-    -I../../../libraries/condensationEvaporationModels/lnInclude \
-    -I../../../libraries/coalescenceModels/lnInclude \
-    -I../../../libraries/diffusionModels/lnInclude \
-    -I../../../libraries/brownianDiffusionModels/lnInclude \
-    -I../../../libraries/conductivityModels/lnInclude \
-    -I../../../libraries/viscosityModels/lnInclude \
-    -I../../../libraries/turbModels/lnInclude \
-    -I../../../libraries/solutionControl/lnInclude \
-    -I../../../libraries/fvPatchFieldsExtension/lnInclude
+    -I$(LIB_SRC)/ODE/lnInclude \
+    -I$(LIB_SRC)/OpenFOAM/lnInclude \
+    -I../../../libraries/helper 
 
 EXE_LIBS = \
-    -L$(FOAM_SITE_LIBBIN) \
     -L$(FOAM_USER_LIBBIN) \
     -lfiniteVolume \
+    -lfvOptions \
     -lmeshTools \
+    -lsampling \
+    -lturbulenceModels \
+    -lcompressibleTurbulenceModels \
+    -lreactionThermophysicalModels \
+    -lspecie \
+    -lcompressibleTransportModels \
+    -lfluidThermophysicalModels \
+    -laerosolThermophysicalModels \
     -laerosolModels \
-    -lfluidThermo \
-    -ldriftVelocityModels \
-    -lnucleationModels \
-    -lcondensationEvaporationModels \
-    -lcoalescenceModels \
-    -ldiffusionModels \
-    -lbrownianDiffusionModels \
-    -lconductivityModels \
-    -lviscosityModels \
-    -lturbModels \
-    -lpisoControl \
-    -lfvPatchFieldsExtension
+    -lODE

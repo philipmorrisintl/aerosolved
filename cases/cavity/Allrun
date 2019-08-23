@@ -1,0 +1,22 @@
+#!/bin/sh
+
+cd ${0%/*} || exit 1
+
+. $WM_PROJECT_DIR/bin/tools/RunFunctions
+. ../../scripts/AeroSolvedRunFunctions
+
+checkPython3
+
+rm -rf 0
+
+runApplication blockMesh
+
+cp -r 0.org 0
+
+runApplication decomposePar
+
+runParallel $(getApplication)
+
+runParallel postProcess -func sampleDict -latestTime
+
+#runApplication python3 plot.py

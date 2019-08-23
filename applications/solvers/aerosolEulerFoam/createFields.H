@@ -1,7 +1,7 @@
 /*---------------------------------------------------------------------------*\
 License
     AeroSolved
-    Copyright (C) 2017 Philip Morris International
+    Copyright (C) 2019 Philip Morris International
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -17,73 +17,38 @@ License
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 \*---------------------------------------------------------------------------*/
 
-/**
+#include "createDriftRDeltaT.H"
 
-\file createFields.H
-\brief Create fields, model objects and references
+Info<< "Creating aerosol model\n" << endl;
 
-In this file a lot of required fields and objects are created, e.g., the
-velocity field U, pressure field p and face flux field phi. Also all models
-are created in terms of corresponding objects and necessary references
-are made to fields contained in these objects.
+autoPtr<aerosolModel> aerosol(aerosolModel::New(mesh));
 
-*/
+aerosolThermo& thermo = aerosol->thermo();
+fluidThermo& fthermo = aerosol->thermo();
 
-// Create the thermo object
+rhoAerosolPhaseThermo& thermoCont = thermo.thermoCont();
+rhoAerosolPhaseThermo& thermoDisp = thermo.thermoDisp();
 
-autoPtr<aerosolModel> tAerosolModel(aerosolModel::New(mesh));
-aerosolModel& aerosol = tAerosolModel();
+basicMultiComponentMixture& compCont = thermoCont.composition();
+basicMultiComponentMixture& compDisp = thermoDisp.composition();
 
-fluidThermo& thermo = aerosol.thermo();
+PtrList<volScalarField>& Y = compCont.Y();
+PtrList<volScalarField>& Z = compDisp.Y();
 
-// Create references to thermo object members
+volScalarField rho
+(
+    IOobject
+    (
+        "rho",
+        runTime.timeName(),
+        mesh,
+        IOobject::NO_READ,
+        IOobject::AUTO_WRITE
+    ),
+    thermo.rho()
+);
 
-PtrList<volScalarField>& Y = thermo.Y();
-PtrList<volScalarField>& Z = thermo.Z();
-
-dimensionedScalar p0 = thermo.p0();
-volScalarField& p1 = thermo.p1();
-volScalarField& psi = thermo.psi();
-volScalarField& T = thermo.T();
-
-// List of M fields (only one for moment method, multiple for sectional)
-
-PtrList<volScalarField>& M = aerosol.M();
-
-volScalarField& rho = thermo.rho();
-const volScalarField& CpEff = thermo.CpEff();
-
-const dictionary& species = thermo.species();
-
-// Create derived run time selectable models
-
-autoPtr<diffusionModel> tDiffusion(diffusionModel::New(mesh, thermo));
-autoPtr<brownianDiffusionModel> tBrownianDiffusion(brownianDiffusionModel::New(mesh, aerosol));
-autoPtr<conductivityModel> tConductivity(conductivityModel::New(mesh, thermo));
-autoPtr<viscosityModel> tViscosity(viscosityModel::New(mesh, thermo));
-autoPtr<nucleationModel> tNucleation(nucleationModel::New(mesh, aerosol));
-autoPtr<condensationEvaporationModel> tCondensationEvaporation(condensationEvaporationModel::New(mesh, aerosol));
-autoPtr<coalescenceModel> tCoalescence(coalescenceModel::New(mesh, aerosol));
-autoPtr<driftVelocityModel> tDriftVelocity(driftVelocityModel::New(mesh, aerosol));
-
-
-diffusionModel& diffusion = tDiffusion();
-brownianDiffusionModel& brownianDiffusion = tBrownianDiffusion();
-conductivityModel& conductivity = tConductivity();
-viscosityModel& viscosity = tViscosity();
-
-// Create references to derived model member functions
-
-const PtrList<volScalarField>& J = aerosol.J();
-const PtrList<volScalarField>& S = aerosol.S();
-
-const PtrList<volScalarField>& DY = diffusion.DY();
-const PtrList<volScalarField>& DM = brownianDiffusion.DM();
-const surfaceScalarField& phic = diffusion.phic();
-const volScalarField& kEff = conductivity.kEff();
-
-// Read velocity field
-
+Info<< "Reading field U\n" << endl;
 volVectorField U
 (
     IOobject
@@ -97,306 +62,115 @@ volVectorField U
     mesh
 );
 
-volScalarField DpDt
+
+volScalarField& p = thermo.p();
+
+#include "compressibleCreatePhi.H"
+
+pressureControl pressureControl(p, rho, pimple.dict(), false);
+
+mesh.setFluxRequired(p.name());
+
+
+Info<< "Creating turbulence model.\n" << nl;
+autoPtr<compressible::turbulenceModel> turbulence
+(
+    compressible::turbulenceModel::New
+    (
+        rho,
+        U,
+        phi,
+        fthermo
+    )
+);
+
+// Set the turbulence into the aerosol model
+aerosol->setTurbulence(turbulence());
+
+
+Info<< "Creating field dpdt\n" << endl;
+volScalarField dpdt
 (
     IOobject
     (
-        "DpDt",
+        "dpdt",
         runTime.timeName(),
-        mesh,
-        IOobject::READ_IF_PRESENT,
-        IOobject::AUTO_WRITE
+        mesh
     ),
     mesh,
-    dimensionedScalar("DpDt", dimPressure/dimTime, 0.0)
+    dimensionedScalar("dpdt", p.dimensions()/dimTime, 0)
 );
 
-volScalarField rhoStar
-(
-    IOobject
-    (
-        "rhoStar",
-        runTime.timeName(),
-        mesh,
-        IOobject::NO_READ,
-        IOobject::AUTO_WRITE
-    ),
-    mesh,
-    dimensionedScalar("rhoStar", dimDensity, 0.0)
-);
+Info<< "Creating field kinetic energy K\n" << endl;
+volScalarField K("K", 0.5*magSqr(U));
 
-// Start with implicit Euler if phi doesn't exist, for consistency of phi, U and rho
+multivariateSurfaceInterpolationScheme<scalar>::fieldTable fields;
 
-IOobject phiHeader
-(
-    "phi",
-    runTime.timeName(),
-    mesh,
-    IOobject::READ_IF_PRESENT,
-    IOobject::AUTO_WRITE
-);
-
-Switch doEuler(false);
-
-if (!phiHeader.headerOk())
+forAll(Y, i)
 {
-    doEuler = true;
-
-    Info << "Running first time step as implicit Euler." << endl;
+    fields.add(Y[i]);
 }
 
-// Create face flux fields
-
-surfaceScalarField phi
-(
-    phiHeader,
-    mesh,
-    dimensionedScalar("phi", dimMass/dimTime, 0.0)
-);
-
-// Droplet fluxes
-
-const PtrList<surfaceScalarField>& phid = aerosol.phid();
-
-// Flux fields
-
-surfaceScalarField phidRho
-(
-    IOobject
-    (
-        "phidRho",
-        runTime.timeName(),
-        mesh,
-        IOobject::READ_IF_PRESENT,
-        IOobject::AUTO_WRITE
-    ),
-    mesh,
-    dimensionedScalar("phidRho", phi.dimensions(), 0.0)
-);
-
-PtrList<surfaceScalarField> phiM(M.size());
-PtrList<surfaceScalarField> phiY(Y.size());
-PtrList<surfaceScalarField> phiZ(Z.size());
-
-forAll(M, i)
+forAll(Z, i)
 {
-    word name = M[i].name();
-
-    phiM.set
-    (
-        i,
-        new surfaceScalarField
-        (
-            IOobject
-            (
-                word("phi." + name),
-                runTime.timeName(),
-                mesh,
-                IOobject::READ_IF_PRESENT,
-                IOobject::AUTO_WRITE
-            ),
-            mesh,
-            dimensionedScalar("phiM", phi.dimensions()/dimMass, 0.0)
-        )
-    );
+    fields.add(Z[i]);
 }
 
-forAll(species, j)
-{
-    word name = species.keys()[j];
+#include "createMRF.H"
 
-    phiY.set
+PtrList<surfaceScalarField> phiEffY(Y.size());
+PtrList<surfaceScalarField> phiEffZ(Z.size());
+
+forAll(Y, j)
+{
+    mesh.setFluxRequired(Y[j].name());
+
+    phiEffY.set
     (
         j,
         new surfaceScalarField
         (
             IOobject
             (
-                word("phi." + name + "Y"),
+                IOobject::groupName("phiEff", Y[j].name()),
                 runTime.timeName(),
                 mesh,
-                IOobject::READ_IF_PRESENT,
-                IOobject::AUTO_WRITE
+                IOobject::NO_READ,
+                IOobject::NO_WRITE
             ),
-            mesh,
-            dimensionedScalar("phiY", phi.dimensions(), 0.0)
+            phi*0.0
         )
     );
+}
 
-    phiZ.set
+forAll(Z, j)
+{
+    mesh.setFluxRequired(Z[j].name());
+
+    phiEffZ.set
     (
         j,
         new surfaceScalarField
         (
             IOobject
             (
-                word("phi." + name + "Z"),
+                IOobject::groupName("phiEff", Z[j].name()),
                 runTime.timeName(),
                 mesh,
-                IOobject::READ_IF_PRESENT,
-                IOobject::AUTO_WRITE
+                IOobject::NO_READ,
+                IOobject::NO_WRITE
             ),
-            mesh,
-            dimensionedScalar("phiZ", phi.dimensions(), 0.0)
+            phi*0.0
         )
     );
 }
 
+scalar calcAerosolAfter=runTime.startTime().value();
 
-// Turbulence model
-
-autoPtr<turbModel> tTurbulence(turbModel::New(mesh, thermo));
-turbModel& turbulence = tTurbulence();
-const volScalarField& kTurb = turbulence.kTurb();
-const volScalarField& muTurb = turbulence.muTurb();
-const volScalarField& muEff = turbulence.muEff();
-
-// Create Crank-Nicolson source terms
-
-PtrList<volScalarField> SddtZ(thermo.nSpecies());
-PtrList<volScalarField> SddtY(thermo.nSpecies());
-PtrList<volScalarField> SddtYD(thermo.nSpecies());
-
-forAll(species, j)
+if(LTS && !pimple.frozenFlow())
 {
-    word speciesName = species.keys()[j];
+    calcAerosolAfter=readScalar(pimple.dict().lookup("calcAerosolAfter"));
 
-    SddtZ.set
-    (
-        j,
-        new volScalarField
-        (
-            IOobject
-            (
-                speciesName + "ddtZ",
-                mesh.time().timeName(),
-                mesh,
-                IOobject::NO_READ,
-                IOobject::NO_WRITE
-            ),
-            mesh,
-            dimensionedScalar("ddtZ", dimDensity/dimTime, 0.0)
-        )
-    );
-
-    SddtY.set
-    (
-        j,
-        new volScalarField
-        (
-            IOobject
-            (
-                speciesName + "ddtY",
-                mesh.time().timeName(),
-                mesh,
-                IOobject::NO_READ,
-                IOobject::NO_WRITE
-            ),
-            mesh,
-            dimensionedScalar("ddtY", dimDensity/dimTime, 0.0)
-        )
-    );
-
-    SddtYD.set
-    (
-        j,
-        new volScalarField
-        (
-            IOobject
-            (
-                speciesName + "ddtYD",
-                mesh.time().timeName(),
-                mesh,
-                IOobject::NO_READ,
-                IOobject::NO_WRITE
-            ),
-            mesh,
-            dimensionedScalar("ddtYD", dimDensity/dimTime, 0.0)
-        )
-    );
+    Info<< "Starting calculation of the aerosol after t = "
+        << calcAerosolAfter << endl;
 }
-
-PtrList<volScalarField> SddtM(M.size());
-
-forAll(M, i)
-{
-    word sectionName = M[i].name();
-
-    SddtM.set
-    (
-        i,
-        new volScalarField
-        (
-            IOobject
-            (
-                "ddt" + sectionName,
-                mesh.time().timeName(),
-                mesh,
-                IOobject::NO_READ,
-                IOobject::NO_WRITE
-            ),
-            mesh,
-            dimensionedScalar("ddtM", dimless/dimTime/dimVolume, 0.0)
-        )
-    );
-}
-
-volScalarField SddtRhoStar
-(
-    IOobject
-    (
-        "ddtRhoStar",
-        runTime.timeName(),
-        mesh,
-        IOobject::READ_IF_PRESENT,
-        IOobject::AUTO_WRITE
-    ),
-    mesh,
-    dimensionedScalar("ddtRhoStar", dimDensity/dimTime, 0)
-);
-
-#include "createAveragingFields.H"
-
-// External pressure gradient
-
-Foam::dimensionedVector externalGradP
-(
-    "externalGradP",
-    dimPressure/dimLength,
-    vector(0, 0, 0)
-);
-
-if(args.options().found("externalGradP"))
-{
-    IOdictionary transportProperties
-    (
-        IOobject
-        (
-            "transportProperties",
-            runTime.constant(),
-            mesh,
-            IOobject::MUST_READ,
-            IOobject::NO_WRITE
-        )
-   );
-
-   externalGradP = transportProperties.lookup("externalGradP");
-
-   Info << endl << "External pressure gradient value set to: " << externalGradP << endl;
-}
-
-// Monitor field for the CFL number
-
-volScalarField CFL
-(
-    IOobject
-    (
-        "CFL",
-        runTime.timeName(),
-        mesh,
-        IOobject::NO_READ,
-        IOobject::AUTO_WRITE
-    ),
-    mesh,
-    dimensionedScalar("CFL", dimless, 0.0)
-);

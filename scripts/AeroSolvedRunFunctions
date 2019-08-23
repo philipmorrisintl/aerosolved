@@ -1,0 +1,18 @@
+setMacros()
+{
+    find . -name *.m4 | while read IN; do
+
+        OUT=$(echo $IN | rev | cut -c 4- | rev)
+
+        m4 $1 $IN > $OUT
+
+    done
+}
+
+checkPython3()
+{
+    if [ ! -x "$(command -v python3)" ]; then
+        echo "Could not find python3 binary"
+        exit 1
+    fi
+}

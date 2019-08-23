@@ -1,0 +1,118 @@
+#!/bin/sh
+
+cd ${0%/*} || exit 1
+
+. $WM_PROJECT_DIR/bin/tools/RunFunctions
+. ../../scripts/AeroSolvedRunFunctions
+
+checkPython3
+
+YMIN=1E-27
+YMAX=1E-9
+
+P=1E5
+W=28.9596
+T=293.15
+SIGMA=1.6
+RHOL=1E3
+MU=1.789e-5
+Z=1E-6
+
+SECTIONSPERDECADE=4
+
+MATH="import math as m"
+
+case $1 in
+
+    moment)
+
+        MODEL=twoMomentLogNormalAnalytical
+        MWALLBCNAME=twoMomentLogNormal
+
+        NSEC=1 #Dummy
+
+        ;;
+
+    sectional)
+
+        MODEL=fixedSectional
+        MWALLBCNAME=sectionalLogNormal
+
+        NSEC=$(echo "$MATH; print(int(m.log10($YMAX/$YMIN)*$SECTIONSPERDECADE))" | python3)
+
+        ;;
+    *)
+        echo "Invalid aerosol model specified (sectional or moment)"
+        exit 1
+        ;;
+esac
+
+if ! [[ $2 =~ ^[0-9]+ ]]; then
+    echo "Specify a CMD (in nm)"
+    exit 1
+else
+    CMD=$(echo "print($2*1e-9)" | python3)
+fi
+
+LAMBDA=$(echo "$MATH; print($MU/$P*m.sqrt(m.pi*1.38064852e-23*$T*6.0221409e23/(2.0*0.001*$W)))" | python3)
+KN=$(echo "$MATH; print(2.0*$LAMBDA/$CMD)" | python3)
+K=$(echo "$MATH; print(2.0*1.38064852e-23*$T/(3.0*$MU))" | python3)
+KFM=$(echo "$MATH; print(1.5*m.sqrt(3.0)*m.sqrt($MU**2/($RHOL*$T*1.38064852e-23))*$K)" | python3)
+
+echo "Kn = $KN"
+
+M0=$(echo "$MATH; print(6.0*$Z*m.exp(-4.5*m.log($SIGMA)**2)/(m.pi*$RHOL*$CMD**3))" | python3)
+Y=$(echo "$MATH; print(1.0-$Z)" | python3)
+
+TAU=$(echo "$MATH; print(1.0/($K*$M0))" | python3)
+
+ENDTIME=$(echo "print($TAU*10)" | python3)
+DELTAT=$(echo "print($ENDTIME/1000)" | python3)
+
+VARS="\
+    -DVARYMIN=$YMIN \
+    -DVARYMAX=$YMAX \
+    -DVARP=$P \
+    -DVARW=$W \
+    -DVART=$T \
+    -DVARNSEC=$NSEC \
+    -DVARY=$Y \
+    -DVARZ=$Z \
+    -DVARSIGMA=$SIGMA \
+    -DVARCMD=$CMD \
+    -DVARMWALLBCNAME=$MWALLBCNAME \
+    -DVARMODEL=$MODEL \
+    -DVARMU=$MU \
+    -DVARRHOL=$RHOL \
+    -DVARENDTIME=$ENDTIME \
+    -DVARDELTAT=$DELTAT \
+    -DVARWRITEINTERVAL=$WRITEINTERVAL \
+    -DVARM0=$M0 \
+    "
+
+setMacros "$VARS"
+
+rm -f params.txt
+
+echo $KN >> params.txt
+echo $K >> params.txt
+echo $KFM >> params.txt
+echo $M0 >> params.txt
+echo $TAU >> params.txt
+echo $T >> params.txt
+echo $LAMBDA >> params.txt
+echo $SIGMA >> params.txt
+echo $YMIN >> params.txt
+echo $YMAX >> params.txt
+echo $NSEC >> params.txt
+echo $RHOL >> params.txt
+
+cp -r 0.org 0
+
+rm 0/*.m4
+
+runApplication blockMesh
+
+runApplication $(getApplication)
+
+#runApplication python3 plot.py $1

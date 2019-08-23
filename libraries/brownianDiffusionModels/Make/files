@@ -1,7 +1,0 @@
-brownianDiffusionModel/brownianDiffusionModel.C
-brownianDiffusionModel/brownianDiffusionModelNew.C
-
-zeroTerm/zeroTerm.C
-StokesEinstein/StokesEinstein.C
-
-LIB = $(FOAM_USER_LIBBIN)/libbrownianDiffusionModels

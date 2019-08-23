@@ -1,0 +1,62 @@
+FoamFile
+{
+    version     2.0;
+    format      ascii;
+    class       volVectorField;
+    location    "0";
+    object      U;
+}
+
+dimensions      [0 1 -1 0 0 0 0];
+
+internalField   uniform (0 0 0);
+
+boundaryField
+{
+    inlet1-vapor
+    {
+        type            flowRateInletVelocity;
+        massFlowRate    1.24753346453e-07;
+        value           $internalField;
+    }
+
+    inlet2-heating
+    {
+        type            flowRateInletVelocity;
+        massFlowRate    3.066402211603636e-07;
+        value           $internalField;
+    }
+
+    inlet3-cooling
+    {
+        type            flowRateInletVelocity;
+        massFlowRate    5.472243960431323e-07;
+        value           $internalField;
+    }
+
+    outlet
+    {
+        type        zeroGradient;
+    }
+
+    "wall.*"
+    {
+        type        fixedValue;
+        value       uniform (0 0 0);
+    }
+
+    front
+    {
+        type        wedge;
+    }
+
+    back
+    {
+        type        wedge;
+    }
+
+    axis
+    {
+        type        empty;
+    }
+}

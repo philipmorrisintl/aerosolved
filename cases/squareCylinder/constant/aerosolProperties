@@ -1,0 +1,32 @@
+FoamFile
+{
+    version     2.0;
+    format      ascii;
+    class       dictionary;
+    location    "constant";
+    object      aerosolProperties;
+}
+
+aerosolModel    none;
+
+submodels
+{
+    driftFluxModel
+    {
+        diffusion
+        {
+            type        none;
+        }
+
+        Brownian
+        {
+            type        none;
+        }
+
+        inertial
+        {
+            type        none;
+        }
+    }
+}
+

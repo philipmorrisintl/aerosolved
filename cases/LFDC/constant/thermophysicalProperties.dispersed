@@ -1,0 +1,62 @@
+FoamFile
+{
+    version     2.0;
+    format      ascii;
+    class       dictionary;
+    location    "constant";
+    object      thermophysicalProperties.dispersed;
+}
+
+thermoType
+{
+    type            heAerosolRhoThermo;
+    mixture         aerosolPhase;
+    transport       const;
+    thermo          hConst;
+    energy          sensibleInternalEnergy;
+    equationOfState icoPolynomial;
+    specie          specie;
+}
+
+species
+{
+    DBP
+    {
+        specie
+        {
+            molWeight   278.35;
+        }
+        equationOfState
+        {
+            rhoCoeffs<8>
+            (
+                1.28863038328e+03
+               -8.26005401974e-01
+                0
+                0
+                0
+                0
+                0
+                0
+            );
+        }
+        thermodynamics
+        {
+            Cp          4195;
+            Hf          0;
+        }
+        transport
+        {
+            mu          3.645e-4;
+            Pr          2.289;
+        }
+        properties
+        {
+            sigma       polynomial
+            (
+                ( 5.88737164982e-02 0.000)
+                (-8.63000000000e-05 1.000)
+            );
+        }
+    }
+}
