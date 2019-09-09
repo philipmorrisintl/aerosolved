@@ -44,13 +44,20 @@ case $1 in
 
         MODEL=fixedSectional
 
-        SECTIONSPERDECADE=8
+        if [[ ! $2 =~ ^[0-9]+ ]]; then
+
+            echo "Specify sectional density (in sections/mass decade)"
+            exit 1
+
+        fi
+
+        SECTIONSPERDECADE=$2
 
         N=$(echo "$MATH; print(int(m.log10($YMAX/$YMIN)*$SECTIONSPERDECADE))" | python3)
 
         rm -f 0; cp -r 0.org 0
 
-        cat sections.txt | while read DATA; do
+        python3 sections.py $N $YMIN $YMAX $DCM $VGZ $RHOVGL | while read DATA; do
 
             I=$(echo $DATA | cut -d " " -f 1)
             XI=$(echo $DATA | cut -d " " -f 2)
@@ -84,3 +91,5 @@ find 0 -name "*.m4" -exec rm {} \;
 runApplication blockMesh
 
 runApplication $(getApplication)
+
+runApplication python3 plot.py

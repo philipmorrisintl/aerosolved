@@ -82,4 +82,4 @@ runApplication decomposePar
 
 runParallel $(getApplication)
 
-#runApplication python3 plot.py $2
+runApplication python3 plot.py $2

@@ -164,8 +164,8 @@ runApplication decomposePar
 
 runParallel $(getApplication)
 
-#if [ "$MODEL" == "fixedSectional" ]; then
+if [ "$MODEL" == "fixedSectional" ]; then
 
-#    runApplication python3 plot.py
+    runApplication python3 plot.py
 
-#fi
+fi

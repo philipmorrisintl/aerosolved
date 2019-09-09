@@ -19,4 +19,4 @@ runParallel $(getApplication)
 
 runParallel postProcess -func sampleDict -latestTime
 
-#runApplication python3 plot.py
+runApplication python3 plot.py

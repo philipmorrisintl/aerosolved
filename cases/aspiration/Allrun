@@ -43,4 +43,4 @@ runApplication topoSet -latestTime
 
 runApplication $(getApplication)
 
-#runApplication python3 plot.py
+runApplication python3 plot.py

@@ -115,4 +115,4 @@ runApplication blockMesh
 
 runApplication $(getApplication)
 
-#runApplication python3 plot.py $1
+runApplication python3 plot.py $1

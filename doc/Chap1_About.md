@@ -49,7 +49,7 @@ This prepares the case, generates a mesh, and runs aerosolEulerFoam, the main so
 
 ## Dependencies
 
-AeroSolved has no special dependencies other than OpenFOAM. It is developed and tested against OpenFOAM-v1812 and OpenFOAM-v1906. Some cases require python3 and numpy for generating a post-processing plot. The availability of python3 is tested in the Allrun scripts.
+AeroSolved has no special dependencies other than OpenFOAM. It is developed and tested against OpenFOAM-v1812 and OpenFOAM-v1906. Some cases require python3 and numpy for generating a post-processing plot (see the [attribution note](../AttributionNote)). The availability of python3 is tested in the Allrun scripts.
 
 ## Documentation
 
