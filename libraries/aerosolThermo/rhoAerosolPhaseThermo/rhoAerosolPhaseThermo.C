@@ -54,23 +54,13 @@ Foam::autoPtr<Foam::rhoAerosolPhaseThermo> Foam::rhoAerosolPhaseThermo::New
 }
 
 
-// * * * * * * * * * * * * * * * * Destructor  * * * * * * * * * * * * * * * //
-
-Foam::rhoAerosolPhaseThermo::~rhoAerosolPhaseThermo()
-{}
-
 // * * * * * * * * * * * * * * Member Functions  * * * * * * * * * * * * * * //
-
 
 Foam::tmp<Foam::volScalarField> Foam::rhoAerosolPhaseThermo::WMix() const
 {
     return W();
 }
 
-Foam::tmp<Foam::volScalarField> Foam::rhoAerosolPhaseThermo::rho() const
-{
-    return rhoReactionThermo::rho();
-}
 
 Foam::tmp<Foam::scalarField> Foam::rhoAerosolPhaseThermo::rho
 (
@@ -89,12 +79,5 @@ Foam::tmp<Foam::scalarField> Foam::rhoAerosolPhaseThermo::rho
     return trho;
 }
 
-Foam::tmp<Foam::scalarField> Foam::rhoAerosolPhaseThermo::rho
-(
-    const label patchi
-) const
-{
-    return rhoReactionThermo::rho(patchi);
-}
 
 // ************************************************************************* //

@@ -254,16 +254,13 @@ void Foam::saturatedMixtureFvPatchScalarField::write(Ostream& os) const
     fvPatchScalarField::write(os);
     writeEntry("value", os);
 
-    if (S_.size() > 0)
+    if (S_.size())
     {
         os.beginBlock("S");
 
-        forAll(S_.toc(), i)
+        for (const word& key : S_.sortedToc())
         {
-            const word key(S_.toc()[i]);
-
-            os.writeKeyword(key)
-                << token::SPACE << S_[key] << token::END_STATEMENT << nl;
+            os.writeEntry(key, S_[key]);
         }
 
         os.endBlock();
@@ -271,12 +268,9 @@ void Foam::saturatedMixtureFvPatchScalarField::write(Ostream& os) const
 
     os.beginBlock("inertMoleFrac");
 
-    forAll(f_.toc(), i)
+    for (const word& key : f_.sortedToc())
     {
-        const word key(f_.toc()[i]);
-
-        os.writeKeyword(key)
-            << token::SPACE << f_[key] << token::END_STATEMENT << nl;
+        os.writeEntry(key, f_[key]);
     }
 
     os.endBlock();
