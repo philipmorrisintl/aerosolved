@@ -28,4 +28,4 @@ aerosolThermo.C
 
 functionObjects/thermoField/thermoField.C
 
-LIB = $(FOAM_USER_LIBBIN)/libaerosolThermophysicalModels
+LIB = $(FOAM_MODULE_LIBBIN)/libaerosolThermophysicalModels
