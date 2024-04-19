@@ -16,7 +16,7 @@ def psVG(T):
     )
 
 def psWater(T):
-    max(np.exp(73.649 - 7258.2/T - 7.3037 * np.log(T) + 4.1653E-6*T**2), 0)
+    return max(np.exp(73.649 - 7258.2/T - 7.3037 * np.log(T) + 4.1653E-6*T**2), 0)
 
 def rhoPGl(T):
     return max \

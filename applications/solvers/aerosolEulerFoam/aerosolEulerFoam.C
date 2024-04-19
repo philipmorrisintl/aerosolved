@@ -24,7 +24,7 @@ License
 
 The aerosolEulerFoam solver is based on the standard reactingFoam OpenFOAM
 solver. It can be seen as the reactingFoam solver in which the reaction model is
-replaced by an aerosol model. The solver is a transient one, and solves for each
+replaced by an aerosol model. AerosolEulerFoam is a transient solver, and solves for each
 time step the evolution of a two-phase aerosol mixture while relying on
 OpenFOAM's PIMPLE algorithm.
 

@@ -9,3 +9,4 @@ wmake libso libraries/aerosolThermo
 wmake libso libraries/aerosolModels
 
 wmake applications/solvers/aerosolEulerFoam
+

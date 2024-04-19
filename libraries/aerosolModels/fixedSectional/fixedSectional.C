@@ -225,6 +225,7 @@ void Foam::aerosolModels::fixedSectional::solveSpatial()
         // TODO: is creation here really a good idea?
         fv::options& fvOptions(fv::options::New(mesh_));
 
+	// Number concentration Equation
         fvScalarMatrix MEqn
         (
             fvm::ddt(rho, Mi)

@@ -61,9 +61,9 @@ fig = plt.figure();
 
 plt.plot(St, eta, '-ok', label='AeroSolved')
 
-plt.plot(StPui, etaPui, 'o', label='Pui et al.')
-plt.plot(StChengAndWang, etaChengAndWang, 'o', label='Cheng & Wang')
-plt.plot(StPilou, etaPilou, 'o', label='Pilou et al.')
+plt.plot(StPui, etaPui, 'o', label='Pui et al. (1987)')
+plt.plot(StChengAndWang, etaChengAndWang, 'o', label='Cheng & Wang (1981)')
+plt.plot(StPilou, etaPilou, 'o', label='Pilou et al. (2011)')
 
 
 # Style/save
