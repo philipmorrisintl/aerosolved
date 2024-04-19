@@ -23,6 +23,7 @@ These studies are published by the authors and contributors of AeroSolved, and a
 * Frederix, E. M. A., Kuczaj, A. K., Nordlund, M., Bělka, M., Lizal, F., Jedelský, J., ... & Geurts, B. J. (2018). Simulation of size-dependent aerosol deposition in a realistic model of the upper human airways. _Journal of Aerosol Science_, 115, 29-45.
 * Kuczaj, A. K., Nordlund, M., Jayaraju, S., Komen, E., Krebs, T., Peitsch, M. C., & Hoeng, J. (2016). Aerosol flow in the vitrocell 24/48 exposure system: flow mixing and aerosol coalescence. _Applied In Vitro Toxicology_, 2(3), 165-174.
 * Lucci, F., Castro,N. D., Rostami,A. A., Oldham, M. J., Hoeng, J., Pithawalla, Y. B., & Kuczaj, A. K. (2018). Characterization and modeling of aerosol deposition in Vitrocell® exposure systems - exposure well chamber deposition efficiency. _Journal of Aerosol Science_, 123,141-160.
+* Lucci, F., Frederix, E. M. A., & Kuczaj, A. K. (2022). AeroSolved: Computational fluid dynamics modeling of multispecies aerosol flows with sectional and moment methods, _Journal of Aerosol Science_,  159, 105854
 * Winkelmann, C., Kuczaj, A.K., Nordlund, M. & Geurts, B. J. (2018). Simulation of aerosol formation due to rapid cooling of multispecies vapors. _Journal of Engineering Mathematics_, 108, 171-196. 
 * Winkelmann, C. , Nordlund, M. , Kuczaj, A. K., Stolz, S. & Geurts, B. (2014)., Efficient second‐order time integration for single‐species aerosol formation and evolution. _Int. J. for Numerical Methods in Fluids_, 74: 313-334.
 

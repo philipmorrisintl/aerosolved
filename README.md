@@ -6,6 +6,14 @@ AeroSolved is an OpenFOAM library for the simulation of multispecies evolving ae
 
 The AeroSolved project is led and funded by Philip Morris International R&D (PMI R&D).  
 
+#### Citation
+
+If you find this project helpful or use it in your work, please cite it using the and present repository its reference paper:
+
+* AeroSolved (2019). GitHub repository, https://github.com/philipmorrisintl/aerosolved
+* Lucci, F., Frederix, E. M. A., & Kuczaj, A. K. (2022). AeroSolved: Computational fluid dynamics modeling of multispecies aerosol flows with sectional and moment methods, _Journal of Aerosol Science_,  159, 105854
+
+
 ## Documentation
 
 Please have a look at the documentation:
@@ -18,10 +26,11 @@ Please have a look at the documentation:
 6. [Classes](doc/Chap6_Classes.md)
 7. [References](doc/Chap7_References.md)
 
+AeroSolved is developed and tested against **OpenFOAM-v1812**. Some cases require python3 and numpy for generating a post-processing plot (see the [attribution note](../AttributionNote)).
+
 ## Contact
 
-Visit [www.aerosolved.com](https://www.intervals.science/resources/aerosolved) for more details or contact us [here](https://www.intervals.science/contact), (please, select AeroSolved as a topic).
-
+For more information and details contact the AeroSolved team at this [email address](mailto:aerosolved.contact@pmi.com).
 
 ## License
 
