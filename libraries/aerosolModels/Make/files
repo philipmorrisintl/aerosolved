@@ -91,4 +91,4 @@ functionObjects/massFlux/massFlux.C
 functionObjects/sampleFlux/sampleFlux.C
 functionObjects/KnudsenNumber/KnudsenNumber.C
 
-LIB = $(FOAM_USER_LIBBIN)/libaerosolModels
+LIB = $(FOAM_MODULE_LIBBIN)/libaerosolModels

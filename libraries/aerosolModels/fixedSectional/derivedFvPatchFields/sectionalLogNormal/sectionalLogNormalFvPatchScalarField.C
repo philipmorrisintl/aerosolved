@@ -35,10 +35,13 @@ Foam::scalarField Foam::sectionalLogNormalFvPatchScalarField::logNormalIntegral
     const scalarField& CMM
 ) const
 {
-    return 0.5*
+    return scalarField
     (
-        erf(log(xu/CMM)/(3.0*sqrt(2.0)*log(sigma_)))
-      - erf(log(max(xl/CMM,VSMALL))/(3.0*sqrt(2.0)*log(sigma_)))
+        0.5*
+        (
+            erf(log(xu/CMM)/(3.0*sqrt(2.0)*log(sigma_)))
+          - erf(log(max(xl/CMM,VSMALL))/(3.0*sqrt(2.0)*log(sigma_)))
+        )
     );
 }
 
@@ -220,10 +223,9 @@ void Foam::sectionalLogNormalFvPatchScalarField::updateCoeffs()
 void Foam::sectionalLogNormalFvPatchScalarField::write(Ostream& os) const
 {
     fvPatchScalarField::write(os);
-    os.writeKeyword("sigma")
-        << sigma_ << token::END_STATEMENT << nl;
-    os.writeKeyword("gamma")
-        << gamma_ << token::END_STATEMENT << nl;
+
+    os.writeEntry("sigma", sigma_);
+    os.writeEntry("gamma", gamma_);
     CMD_->writeData(os);
     writeEntry("value", os);
 }

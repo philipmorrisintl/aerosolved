@@ -219,7 +219,7 @@ public:
             }
 
             //- Compute the droplet diameter given a dispersed phase density
-            inline scalar d(const scalar& rho) const
+            inline scalar d(const scalar rho) const
             {
                 return
                     Foam::pow(x_/rho*6.0/constant::mathematical::pi, 1.0/3.0);
@@ -229,8 +229,13 @@ public:
             //  density field
             inline scalarField d(const scalarField& rho) const
             {
-                return
-                    Foam::pow(x_/rho*6.0/constant::mathematical::pi, 1.0/3.0);
+                scalarField result(x_/rho*6.0/constant::mathematical::pi);
+
+                for (scalar& val : result)
+                {
+                    val = Foam::pow(val, 1.0/3.0);
+                }
+                return result;
             }
 
             //- is M_ valid?

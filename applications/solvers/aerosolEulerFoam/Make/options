@@ -1,3 +1,10 @@
+sinclude $(GENERAL_RULES)/module-path-user
+
+/* Failsafe - user location */
+ifeq (,$(strip $(FOAM_MODULE_APPBIN)))
+    FOAM_MODULE_APPBIN = $(FOAM_USER_APPBIN)
+endif
+
 EXE_INC = \
     -I$(LIB_SRC)/finiteVolume/lnInclude \
     -I$(LIB_SRC)/meshTools/lnInclude \
@@ -12,7 +19,7 @@ EXE_INC = \
     -I../../../libraries/aerosolModels/lnInclude \
     -I$(LIB_SRC)/ODE/lnInclude \
     -I$(LIB_SRC)/OpenFOAM/lnInclude \
-    -I../../../libraries/helper 
+    -I../../../libraries/helper
 
 EXE_LIBS = \
     -L$(FOAM_USER_LIBBIN) \

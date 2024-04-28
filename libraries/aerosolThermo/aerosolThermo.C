@@ -50,8 +50,10 @@ Foam::aerosolThermo::aerosolThermo
     inactiveSpeciesMap_(),
     contSpeciesMap_(),
     dispSpeciesMap_(),
-    inertSpecie_(lookupType<word>("inertSpecie"))
+    inertSpecie_()
 {
+    dictionary::readEntry("inertSpecie", inertSpecie_);
+
     // Create specific temperature fields
 
     {
@@ -97,11 +99,17 @@ Foam::aerosolThermo::aerosolThermo
 
     species_.transfer(s);
 
+    #if OPENFOAM > 1712
+    const wordList sActive(get<wordList>("activeSpecies"));
+    const wordList sInactive(get<wordList>("inactiveSpecies"));
+    #else
     wordList sActive(lookupType<wordList>("activeSpecies"));
     wordList sInactive(lookupType<wordList>("inactiveSpecies"));
+    #endif
 
     forAll(species_, j)
     {
+        // if (sActive.found(species_[j]))
         if (findIndex(sActive, species_[j]) != -1)
         {
             activeSpecies_.append(species_[j]);

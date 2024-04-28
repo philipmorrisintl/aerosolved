@@ -27,6 +27,7 @@ const Foam::word Foam::aerosolReader::speciesPropertiesName
     "speciesProperties"
 );
 
+
 // * * * * * * * * * * * * * Private Member Functions  * * * * * * * * * * * //
 
 Foam::speciesTable& Foam::aerosolReader::setSpecies
@@ -41,6 +42,7 @@ Foam::speciesTable& Foam::aerosolReader::setSpecies
 
     word inertSpecie(dict.lookup("inertSpecie"));
 
+    // if (!sInactive.found(inertSpecie))
     if (findIndex(sInactive, inertSpecie) == -1)
     {
         FatalErrorInFunction
@@ -49,6 +51,7 @@ Foam::speciesTable& Foam::aerosolReader::setSpecies
             << abort(FatalError);
     }
 
+    // if (sActive.found(inertSpecie))
     if (findIndex(sActive, inertSpecie) != -1)
     {
         FatalErrorInFunction
@@ -58,6 +61,7 @@ Foam::speciesTable& Foam::aerosolReader::setSpecies
 
     forAll(sActive, j)
     {
+        // if (sActive.found(sActive[j]))
         if (findIndex(sInactive, sActive[j]) != -1)
         {
             FatalErrorInFunction
