@@ -1,6 +1,6 @@
-# AeroSolved
+# AeroSolved&trade; <img src="doc/fig/AeroSolved_logo.png" align="right" height="60">
 
-Welcome to AeroSolved.
+Welcome to AeroSolved&trade;.
 
 AeroSolved is an OpenFOAM library for the simulation of multispecies evolving aerosols. AeroSolved was developed to study aerosol dynamics starting from the aerosol generation through its evolution, transport and deposition. The implemented aerosol physics is applicable to a wide range of practical applications, including the development of aerosol generators, inhalation devices, validation of aerosol delivery systems for in vivo inhalation studies and in vitro sciences as well as for atmospheric sciences.
 
