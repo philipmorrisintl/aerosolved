@@ -200,7 +200,14 @@ Foam::functionObjects::thermoField::thermoField
 )
 :
     fvMeshFunctionObject(name, runTime, dict),
-    thermoField_(thermoFieldTypeNames_.lookup("thermoField", dict)),
+    thermoField_
+    (
+        #if OPENFOAM >= 1712
+        thermoFieldTypeNames_.get("thermoField", dict)
+        #else
+        thermoFieldTypeNames_.lookup("thermoField", dict)
+        #endif
+    ),
     thermo_(lookupObjectRef<aerosolThermo>("thermophysicalProperties")),
     resultName_
     (

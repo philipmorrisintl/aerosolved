@@ -145,6 +145,9 @@ bool Foam::functionObjects::sampleFlux::execute()
 
 bool Foam::functionObjects::sampleFlux::write()
 {
+    // Not sure what this was supposed to have been,
+    // but does not compile with OpenFOAM-v2006
+#if 0
     if (Pstream::master())
     {
         forAll(names(), filei)
@@ -152,6 +155,7 @@ bool Foam::functionObjects::sampleFlux::write()
             writeTime(files(filei));
         }
     }
+#endif
 
     forAll(fluxFieldNames_, fluxi)
     {

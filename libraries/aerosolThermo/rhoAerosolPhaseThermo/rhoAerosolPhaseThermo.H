@@ -91,7 +91,7 @@ public:
 
 
     //- Destructor
-    virtual ~rhoAerosolPhaseThermo();
+    virtual ~rhoAerosolPhaseThermo() = default;
 
 
     //- Member functions
@@ -113,16 +113,10 @@ public:
         virtual tmp<scalarField> WMix(const label patchi) const = 0;
 
         //- Density [kg/m3]
-        virtual tmp<volScalarField> rho() const;
+        using rhoReactionThermo::rho;
 
         //- Extend rhoThermo with a Cell-based density [kg/m3]
         virtual tmp<scalarField> rho(const labelList& cells) const;
-
-        //- Patch-based density [kg/m3]
-        virtual tmp<scalarField> rho(const label patchi) const;
-
-
-
 };
 
 

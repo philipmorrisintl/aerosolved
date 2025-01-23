@@ -36,8 +36,8 @@ addToRunTimeSelectionTable(sectionalDistribution, sectionalList, dictionary);
 
 void sectionalList::update()
 {
-    x_ = dict().lookupType<scalarList>("x");
-    y_ = dict().lookupType<scalarList>("y");
+    dict().readEntry("x", x_);
+    dict().readEntry("y", y_);
 
     if (x_.size() < 1)
     {
