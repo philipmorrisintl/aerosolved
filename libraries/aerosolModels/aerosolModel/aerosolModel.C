@@ -41,7 +41,7 @@ void Foam::aerosolModel::versionInfo()
     Info<< endl;
 
     Info<< "###############################################################################" << nl
-	    << "####                       Welcome to AeroSolved 2.1                       ####" << nl
+	    << "####                       Welcome to AeroSolved 3.1                       ####" << nl
 	    << "###############################################################################" << nl
 	    <<  nl
 	    << "Cite: " << nl
@@ -50,6 +50,7 @@ void Foam::aerosolModel::versionInfo()
 	    << "multispecies aerosol flows with sectional and moment methods," << nl
 	    << "Journal of Aerosol Science, Volume 159, (2022)" << nl
 	    << "doi:10.1016/j.jaerosci.2021.105854" << nl
+	    << "Modified Version: 3.1 : Riya Dey, Jayant Krishan, S Anand"<<nl
 	    << nl
 	    << "###############################################################################" << nl
 	    << nl;
@@ -108,8 +109,154 @@ Foam::aerosolModel::aerosolModel
         "residualAlpha",
         dimless,
         coeffs_.lookupOrDefault<scalar>("residualAlpha", 1E-12)
-    )
+    ),
+    
+// shape factor parameter
+
+// Particle type: "fractal" or "solid"
+   particleShape_
+   (
+    modelType == "none"
+  ? word("none")
+  : word(subDict("sfparam").lookup("particleShape"))
+   ),
+
+
+// Set defaults; will overwrite below based on particleShape_
+  frDim_(0.0),
+  monoRad_(0.0),
+  monoRho_(0.0),
+
+
+// Initialize with defaults (will be set properly below)
+	dysfPfFm_(1.0),
+	dysfExpFm_(0.0),
+	dysfPfTr_(1.0),
+	dysfExpTr_(0.0),
+	dysfPfCont_(1.0),
+	dysfExpCont_(0.0)
+
+
+// .....................................................       
+        
 {
+      // Validation check here
+	if (particleShape_ != "solid" && particleShape_ != "fractal" && particleShape_ != "custom")
+	{
+    		FatalErrorInFunction
+       	 << "Invalid particleShape in sfparam: must be 'solid', 'fractal', or 'custom'. "
+       	 << "Found: " << particleShape_ << nl << exit(FatalError);
+	}
+
+
+
+if (modelType != "none")
+{
+    
+    if (particleShape_ == "solid")
+    {
+        frDim_       = 3.0;
+        monoRad_     = 1.0;  // not used, but set to avoid uninitialized values, should not be non zero
+        monoRho_     = 1.0;  // not used, but set to avoid uninitialized values, should not be non zero
+        dysfPfFm_    = 1.0;
+        dysfExpFm_   = 0.0;
+        dysfPfTr_    = 1.0;
+        dysfExpTr_   = 0.0;
+        dysfPfCont_  = 1.0;
+        dysfExpCont_ = 0.0;
+    }
+    else if (particleShape_ == "fractal")
+    
+    {       
+            frDim_    = readScalar(subDict("sfparam").lookup("frdim"));
+	     monoRad_ = readScalar(subDict("sfparam").lookup("monorad"));
+             monoRho_ = readScalar(subDict("sfparam").lookup("monorho"));
+            
+        if (mag(frDim_ - 3.0) < SMALL || frDim_ > 2.99)
+        {
+            dysfPfFm_    = 1.0;
+            dysfExpFm_   = 0.0;
+            dysfPfTr_    = 1.0;
+            dysfExpTr_   = 0.0;
+            dysfPfCont_  = 1.0;
+            dysfExpCont_ = 0.0;
+        }
+        else if (frDim_ < 3.0 && frDim_ >= 2.50)
+        {
+            dysfPfFm_    = 0.93;
+            dysfExpFm_   = 0.49;
+            dysfPfTr_    = 1.12;
+            dysfExpTr_   = 0.28;
+            dysfPfCont_  = 0.57;
+            dysfExpCont_ = 0.40;
+        }
+        else if (frDim_ < 2.50 && frDim_ >= 2.24)
+        {
+            dysfPfFm_    = 0.91;
+            dysfExpFm_   = 0.54;
+            dysfPfTr_    = 1.24;
+            dysfExpTr_   = 0.28;
+            dysfPfCont_  = 0.58;
+            dysfExpCont_ = 0.43;
+        }
+        else if (frDim_ < 2.24 && frDim_ >= 1.9)
+        {
+            dysfPfFm_    = 0.90;
+            dysfExpFm_   = 0.56;
+            dysfPfTr_    = 1.24;
+            dysfExpTr_   = 0.31;
+            dysfPfCont_  = 0.76;
+            dysfExpCont_ = 0.40;
+        }
+        else if (frDim_ < 1.9 && frDim_ >= 1.0)
+        {
+            dysfPfFm_    = 0.90;
+            dysfExpFm_   = 0.58;
+            dysfPfTr_    = 1.19;
+            dysfExpTr_   = 0.36;
+            dysfPfCont_  = 0.70;
+            dysfExpCont_ = 0.45;
+        }
+        else
+        {
+            WarningIn("aerosolModel::aerosolModel")
+                << "frdim = " << frDim_
+                << " is outside supported range (1.0 – 3.0)."
+                << " Please choose between 1. and 3." << endl;
+        }
+    }
+    
+    else if (particleShape_ == "custom")
+    {
+        frDim_       = readScalar(subDict("sfparam").lookup("frdim"));
+        monoRad_ = readScalar(subDict("sfparam").lookup("monorad"));
+        monoRho_ = readScalar(subDict("sfparam").lookup("monorho"));
+        dysfPfFm_    = readScalar(subDict("sfparam").lookup("dysfPfFm"));
+        dysfExpFm_   = readScalar(subDict("sfparam").lookup("dysfExpFm"));
+        dysfPfTr_    = readScalar(subDict("sfparam").lookup("dysfPfTr"));
+        dysfExpTr_   = readScalar(subDict("sfparam").lookup("dysfExpTr"));
+        dysfPfCont_  = readScalar(subDict("sfparam").lookup("dysfPfCont"));
+        dysfExpCont_ = readScalar(subDict("sfparam").lookup("dysfExpCont"));
+    }
+
+}
+
+	Info << "\n--- Shape Factor Configuration ---" << nl;
+	Info << "particleShape     : " << particleShape_ << nl;
+	Info << "frDim            : " << frDim_ << nl;
+	Info << "monorad          : " << monoRad_ << nl;
+	Info << "monorho          : " << monoRho_ << nl;
+	Info << "dysfPfFm         : " << dysfPfFm_ << nl;
+	Info << "dysfExpFm        : " << dysfExpFm_ << nl;
+	Info << "dysfPfTr         : " << dysfPfTr_ << nl;
+	Info << "dysfExpTr        : " << dysfExpTr_ << nl;
+	Info << "dysfPfCont       : " << dysfPfCont_ << nl;
+	Info << "dysfExpCont      : " << dysfExpCont_ << nl;
+	Info << "----------------------------------\n" << endl;
+    
+    
+    
+
     versionInfo();
 
     read();

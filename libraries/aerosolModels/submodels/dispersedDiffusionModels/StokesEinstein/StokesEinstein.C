@@ -63,11 +63,36 @@ scalar StokesEinstein::diffusivity
         Foam::sqrt(8.0*k*T/(pi*mg)) * 4.0/5.0*mu/p
     );
 
-    const scalar Kn(lambda/max(d,aerosol_.dMin()));
+    const scalar Kn(2.0*lambda/max(d,aerosol_.dMin()));
 
-    const scalar C(1.0 + Kn*(2.34+1.05*Foam::exp(-0.39/Kn)));
+    const scalar C(1.0 + (Kn/2.0)*(2.34+1.05*Foam::exp(-0.39/(Kn/2.0))));
 
-    return k*T*C/(3.0*pi*mu*d);
+    scalar sf = 1.0;
+    
+    const scalar monoRad = aerosol_.monoRad();
+    const scalar pfFm    = aerosol_.dysfPfFm();
+    const scalar expFm   = aerosol_.dysfExpFm();
+    const scalar pfTr    = aerosol_.dysfPfTr();
+    const scalar expTr   = aerosol_.dysfExpTr();
+    const scalar pfCont  = aerosol_.dysfPfCont();
+    const scalar expCont = aerosol_.dysfExpCont();
+
+	if (Kn < 0.1)
+	{
+    		sf = pfCont * pow(0.5 * d / monoRad, expCont); // Continuum regime
+	}
+	else if (Kn > 10.0)
+	{
+    		sf = pfFm * pow(0.5 * d / monoRad, expFm);     // Free molecular regime
+	}
+	else
+	{
+    		sf = pfTr * pow(0.5 * d / monoRad, expTr);     // Transitional regime
+	}
+      
+
+    return k*T*C/(3.0*pi*mu*d*sf);
+
 }
 
 // * * * * * * * * * * * * * * * * Constructors  * * * * * * * * * * * * * * //

@@ -70,7 +70,7 @@ absorbingMFvPatchScalarField
 :
     fixedValueFvPatchScalarField(p, iF, dict),
     alpha_(dict.lookupOrDefault<scalar>("reboundValue", 1.0)),
-    beta_(dict.lookupOrDefault<scalar>("stickinessValues", 1.0)),
+    beta_(dict.lookupOrDefault<scalar>("stickinessValue", 1.0)),
     clipInwardFlux_(dict.lookupOrDefault<bool>("clipInwardFlux", true))
 {}
 

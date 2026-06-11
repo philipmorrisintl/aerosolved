@@ -1,0 +1,189 @@
+                                                            AEROSOLVED-SF
+                                                     Version 3.1, 01 February 2026 
+                                    (modified from aerosolved 3.0, version accessed from website on 29.01.2026)
+                                                  Authors:Riya Dey, Jayant Krishan, S Anand
+
+=======================================================================
+                           RELEASE NOTES
+=======================================================================
+
+MODIFICATIONS
+-------------
+
+
+        A. Slip Correction for Small Particles
+-----------------------------------------------------------------------
+The Cunningham slip correction factor has been added to:
+- Brownian model (Stokes–Einstein)
+- Inertial models (fullStokes, Manninen)
+- sectionalSubGridDepositionVelocityFvPatchVectorField.C
+
+Reference: Eq. 3.20 in Hinds (Aerosol Technology, 2nd edition).
+
+
+-----------------------------------------------------------------------
+
+        B. Size-Dependent Dynamic Shape Factor
+-----------------------------------------------------------------------
+Size-dependent shape factor corrections are now included in:
+- Brownian model (Stokes–Einstein)
+- Inertial models (fullStokes, snDrift, Manninen)
+- sectionalSubGridDepositionVelocityFvPatchVectorField.C
+- Coagulation model
+
+Input parameters for shape factor:
+- Fractal dimension (frdim) [for spherical shape, frDim = 3]
+- Monomer radius (monorad)
+- Monomer density (monorho)
+- Optional: Pre-factor and exponent terms (dependent on frdim and flow regime).
+
+****These parameters are defined under 'sfparam': define 
+				Fractal dimension (frdim), 
+				Monomer radius (monorad) and 
+				Monomer density (monorho)
+
+Supported particle shapes (particleShape):
+
+	- solid: sets automatically frdim=3, pre-factors=1, exponents=0. No need to define monomer radius, monomer densiity or pre factor and exponents explicitly
+	
+	- fractal: requires frdim, monorad, monorho; No need to define pre factor and exponents explicitly, it will be auto-assigned.
+  		[Ref. Jayant et al., Nuclear Engineering and Design, 2025, Vol. 440]
+  		
+	- custom: fully user-defined frdim, monorad, monorho, pre-factors (dysfPfFm, dysfPfTr, dysfPfCont) and 
+	                             exponent terms (dysfExpFm, dysfExpTr, dysfExpCont).
+  	          Useful for constant shape factor cases.
+
+For e.g. if shape factor = 1.5. In that case, set frdim =3, 
+                                              pre-factor terms (dysfPfFm, dysfPfTr, dysfPfCont) = 1.5 and 
+                                              exponent terms (dysfExpFm, dysfExpTr, dysfExpCont) =0.
+
+Example usage: see Ex. 1.
+
+-----------------------------------------------------------------------
+
+          C. Condensation Model
+-----------------------------------------------------------------------
+
+New switches introduced:
+
+- Kelvin effect:     KelvinEffect: true/false
+- Fuchs–Sutugin:     FuchsCorrection: true/false
+
+Defaults: both are false if not specified.
+
+Additional options:
+
+ - Define saturation ration via the variable SR
+ - solute & soluteLimit: if solute is present, the name of the solute species alomg with the critical mass fraction 
+                         of the solute to terminate the evaporation/condensation can be added
+
+Example usage: see Ex. 2.
+
+-----------------------------------------------------------------------
+
+       D. Coagulation Model
+-----------------------------------------------------------------------
+
+The fixedSectional.C model now includes coagulation kernels for:
+	- Laminar flow: Fuchs’ Brownian coagulation
+	- Turbulent flow: Turbulent inertia and turbulent shear models
+
+Turbulent models are compatible with k–ε, k–ω, and k–ω SST models, 
+in absence of these models, a fixed ε value can be set as default in fixedSectional.C routine.
+
+The kernel works for both fractal and solid spherical particles. The monomer
+radius must be smaller than the smallest size in the input distribution.
+
+
+[Ref. Jacobson, Fundamentals of Atmospheric Modeling, 2004]
+
+=======================================================================
+
+  
+________________________________________________________________________________________________________________________________
+________________________________________________________________________________________________________________________________   	 
+   	 
+ EXAMPLES:
+ 
+ Include the following block in "aerosolProperties" file inside constant directory. 
+    
+  Ex.1. Dynamic shape factor implementation
+  ------------------------------------------  
+  ---------For solid spherical particle---------          ---------For fractals ---------        ---------For custom ---------      
+  sfparam                                                   sfparam                                sfparam
+ {                                                         {                                      {   
+   particleShape     solid;                                 particleShape     fractal;             particleShape     custom;
+   frdim             3.0;  // can be skipped in input       frdim             1.8;                 frdim             3;
+   monorad           1.0E-10; // can be skipped in input    monorad           1.0E-10;             monorad           1.0E-10;
+   monorho           1000;   // can be skipped in input     monorho           1000;                monorho           1000;
+ }                                                         }                                       dysfPfFm          1.5;
+                                                                                                   dysfExpFm         0.0;
+                                                                                                   dysfPfTr          1.5;
+                                                                                                   dysfExpTr         0.0;
+                                                                                                   dysfPfCont        1.5;
+                                                                                                   dysfExpCont       0.0;
+                                                                                                  }
+
+Ex.2. Condensation model
+  ------------------------------------------  
+   Include the following block in "aerosolProperties" file inside constant directory under condensation submodel.   
+  
+    condensation
+    {
+        type        coupled;
+        
+        KelvinEffect        true;
+        
+        FuchsCorrection     true;
+        
+        SR    0.55;
+        solute       NaCl;
+        soluteLimit  0.357;
+
+        heatOfVaporization
+        {
+            active          true;
+        }
+    }
+
+ 
+ The activity coeffiencts  are to be defined under activityCoeff block in "thermophysicalProperties" inside constant directory.
+ 
+ FoamFile
+{
+    version     2.0;
+    format      ascii;
+    class       dictionary;
+    location    "constant";
+    object      thermophysicalProperties;
+}
+
+activeSpecies
+(
+    Water
+    NaCl
+);
+
+inactiveSpecies
+(
+    Air
+  
+);
+
+inertSpecie Air;
+
+phaseMixing
+{
+    viscosity       continuousPhase;
+    conductivity    mass;
+    heatCapacity    mass;
+}
+
+activityCoeff
+{
+   type    constant;
+   Water   1.0;
+   NaCl    0;
+}
+ 
+///////////////////////////////////////////////////////////////////////////////////////////////////////

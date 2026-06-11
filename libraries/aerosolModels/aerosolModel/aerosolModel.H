@@ -116,6 +116,44 @@ protected:
 
         //- List of effective particle number flux fields, used as monitor
         PtrList<surfaceScalarField> phiEff_;
+        // Declare dynamic shape factor parameters ......
+
+        //- Particle shape type: "fractal" or "solid"
+	word particleShape_;
+        
+        //- Fractal dimension
+        scalar frDim_;
+        
+        //- Dynamic shape factor monomer radius
+        scalar monoRad_;
+        
+        //- Monomar density
+        scalar monoRho_;
+
+        //- Dynamic shape factor pre factor in free molecular regime
+        scalar dysfPfFm_;
+
+        //- Dynamic shape factor exponent in free molecular regime
+        scalar dysfExpFm_;
+
+        //- Dynamic shape factor pre factor in transition regime   
+        scalar dysfPfTr_;
+
+        //- Dynamic shape factor exponent in transition regime    
+        scalar dysfExpTr_;
+
+        //- Dynamic shape factor pre factor in continuum regime    
+        scalar dysfPfCont_;
+
+        //- Dynamic shape factor exponent in continuum regime
+        scalar dysfExpCont_;
+
+
+// ...................................
+        
+        
+        
+        
 
     // Private Member Functions
 
@@ -261,6 +299,70 @@ public:
         {
             return dMax_;
         }
+
+//- Return shape factor parameters
+	
+	
+	inline word particleShape() const
+	{
+    	   return particleShape_;
+	}
+
+        inline scalar frDim() const
+
+        {
+           return frDim_;
+        }
+
+
+        inline scalar monoRad() const
+
+        {
+           return monoRad_;
+        }
+        
+        inline scalar monoRho() const
+
+        {
+           return monoRho_;
+        }
+
+        inline scalar dysfPfFm() const
+
+        {
+           return dysfPfFm_;
+        }
+
+        inline scalar dysfExpFm() const
+
+        {
+           return dysfExpFm_;
+        }
+
+        inline scalar dysfPfTr() const
+
+        {
+           return dysfPfTr_;
+        }
+
+        inline scalar dysfExpTr() const
+
+        {
+           return dysfExpTr_;
+        }
+
+        inline scalar dysfPfCont() const
+
+        {
+           return dysfPfCont_;
+        }
+
+        inline scalar dysfExpCont() const
+
+        {
+           return dysfExpCont_;
+        }
+
 
         //- Return access to the effective droplet number flux fields list
         inline const PtrList<surfaceScalarField>& phiEff() const;

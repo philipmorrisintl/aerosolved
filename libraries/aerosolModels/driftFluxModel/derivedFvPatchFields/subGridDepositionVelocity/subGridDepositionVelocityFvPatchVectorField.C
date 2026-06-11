@@ -18,12 +18,14 @@ License
 \*---------------------------------------------------------------------------*/
 
 #include "subGridDepositionVelocityFvPatchVectorField.H"
+#include "addToRunTimeSelectionTable.H"
 #include "fvPatchFieldMapper.H"
 #include "volFields.H"
 #include "surfaceFields.H"
 #include "uniformDimensionedFields.H"
 #include "aerosolModel.H"
 #include "subGridDepositionModel.H"
+#include "constants.H"
 
 // * * * * * * * * * * * * * * * * Constructors  * * * * * * * * * * * * * * //
 
@@ -132,7 +134,92 @@ void Foam::subGridDepositionVelocityFvPatchVectorField::evaluate
 
     const scalarField mu(thermo.thermoCont().mu(patch().index()));
     const scalarField d(this->d());
-    const scalarField tau(rhod*sqr(d)/(18.0*mu));
+    
+    // Modified tau
+
+    const volScalarField& mug = aerosol.thermo().thermoCont().mu();
+    
+    const rhoAerosolPhaseThermo& thermoCont = aerosol.thermo().thermoCont();
+    const basicSpecieMixture& compCont = thermoCont.composition();
+    const label j = thermoCont.species()[aerosol.thermo().inertSpecie()];
+    
+    const volScalarField& p = aerosol.thermo().p();
+    const volScalarField& T = thermoCont.T();
+    
+    const scalar pi = constant::mathematical::pi;
+    const scalar k = constant::physicoChemical::k.value();
+    const scalar NA = constant::physicoChemical::NA.value();
+
+
+    const scalar WA = compCont.W(j);
+    const scalar mg = 0.001 * WA / NA;
+
+// Calculate mean free path
+
+
+scalarField lambda(patch().size());
+    forAll(lambda, i)
+    {
+        lambda[i] = sqrt(8.0 * k * T[patch().faceCells()[i]] / (pi * mg)) * 4.0/5.0 * mu[i] / p[patch().faceCells()[i]];
+    }
+
+    const scalar dMinValue = aerosol.dMin();
+
+    scalarField Kn(patch().size());
+    forAll(Kn, i)
+    {
+        scalar dc = max(d[i], dMinValue);
+        Kn[i] = (2.0 * lambda[i]) / (dc + SMALL);
+    }
+
+    scalarField C(patch().size());
+    forAll(C, i)
+    {
+        scalar Kn2 = Kn[i] / 2.0;
+        C[i] = 1.0 + Kn2 * (2.34 + 1.05 * exp(-0.39 / (Kn2 + SMALL)));
+    }
+
+    scalarField tau(patch().size(), 0.0);
+    
+
+    const scalarField& rhol = thermo.thermoDisp().rho(patch().index());
+
+
+    
+
+	const scalar monoRad = aerosol.monoRad();
+	const scalar pfFm    = aerosol.dysfPfFm();
+	const scalar expFm   = aerosol.dysfExpFm();
+	const scalar pfTr    = aerosol.dysfPfTr();
+	const scalar expTr   = aerosol.dysfExpTr();
+	const scalar pfCont  = aerosol.dysfPfCont();
+	const scalar expCont = aerosol.dysfExpCont();
+
+	forAll(tau, i)
+		{
+    			scalar dc = max(d[i], SMALL);
+    			scalar mu = max(mug[i], SMALL);
+    			scalar cc = max(C[i], SMALL);
+    			scalar KnVal = Kn[i];
+
+    		scalar sf = 1.0;
+    	if (KnVal < 0.1)
+    	        {
+        	sf = pfCont * pow(0.5 * dc / monoRad, expCont);
+        	}
+    	else if (KnVal > 10.0)
+    	        {
+        	sf = pfFm * pow(0.5 * dc / monoRad, expFm);
+        	}
+    	else
+        	{
+        	sf = pfTr * pow(0.5 * dc / monoRad, expTr);
+               }
+    		sf = max(sf, SMALL);
+   		tau[i] = sqr(dc) * rhol[i] * cc / (18.0 * mu * sf);
+		}
+
+	tau = max(tau, scalar(SMALL));
 
     const scalarField delta(mag(patch().delta()));
     const vectorField n(-patch().nf());

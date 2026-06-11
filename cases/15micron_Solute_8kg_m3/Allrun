@@ -1,0 +1,103 @@
+#!/bin/bash
+
+cd ${0%/*} || exit 1
+
+. $WM_PROJECT_DIR/bin/tools/RunFunctions
+. ../../../scripts/AeroSolvedRunFunctions
+
+checkPython3
+
+# Params
+
+SIGMA=1.0001
+DCM=15E-6
+Z=1.48859108881532E-12
+
+RHOL=1000
+
+YMIN=1E-22
+YMAX=1E-9
+
+MATH="import math as m"
+
+# Configure
+
+case $1 in
+
+    moment)
+
+        MODEL=twoMomentLogNormalAnalytical
+
+        CMD=$(echo "$MATH; print($DCM*m.exp(-0.5*m.log($SIGMA)**2))" | python3)
+        DM=$(echo "$MATH; print($CMD*m.exp(1.5*m.log($SIGMA)**2))" | python3)
+
+        M=$(echo "$MATH; print($Z/(1.0/6.0*m.pi*$RHOL*($DM)**3))" | python3)
+
+        N=1 #Dummy
+
+        rm -f 0; cp -r 0.org 0
+
+        m4 -DVARM=$M -DVARMNAME="M" 0/M.m4 > 0/M
+
+        ;;
+
+    sectional)
+
+        MODEL=fixedSectional
+
+        if [[ ! $2 =~ ^[0-9]+ ]]; then
+
+            echo "Specify sectional density (in sections/mass decade)"
+            exit 1
+
+        fi
+
+        SECTIONSPERDECADE=$2
+
+        N=$(echo "$MATH; print(int(m.log10($YMAX/$YMIN)*$SECTIONSPERDECADE))" | python3)
+
+        rm -f 0; cp -r 0.org 0
+        
+        
+        # Define output file for all M values
+        SECTION_FILE=sectional${N}_M_values.txt
+        > $SECTION_FILE  # clear file first
+
+        python3 sections.py $N $YMIN $YMAX $DCM $Z $RHOL | tee $SECTION_FILE | while read DATA; do
+
+            I=$(echo $DATA | cut -d " " -f 1)
+            XI=$(echo $DATA | cut -d " " -f 2)
+            MI=$(echo $DATA | cut -d " " -f 3)
+
+            m4 -DVARM=$MI -DVARMNAME="M.$I" 0/M.m4 > 0/M.$I
+
+        done
+
+        ;;
+    *)
+        echo "Invalid aerosol model specified (sectional or moment)"
+        exit 1
+        ;;
+esac
+
+VARS="\
+    -DVARMODEL=$MODEL \
+    -DVARN=$N \
+    -DVARYMIN=$YMIN \
+    -DVARYMAX=$YMAX \
+    -DVARSIGMA=$SIGMA \
+    -DVARZ=$Z \
+    -DVARRHOL=$RHOL \
+    "
+
+m4 $VARS constant/aerosolProperties.m4 > constant/aerosolProperties
+m4 $VARS 0/Water.dispersed.m4 > 0/Water.dispersed
+m4 $VARS constant/thermophysicalProperties.dispersed.m4 > constant/thermophysicalProperties.dispersed
+
+find 0 -name "*.m4" -exec rm {} \;
+
+runApplication blockMesh
+
+#runApplication $(getApplication)
+
+#runApplication python3 plot.py

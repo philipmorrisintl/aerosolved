@@ -1,0 +1,9 @@
+For continuum regime, we have considered
+
+aggregate diameter = 1 μm, 
+
+monomer radius = 1 nm and 
+
+temperature = 298 K
+
+Run using the command: ./Allrun sectional 1000
