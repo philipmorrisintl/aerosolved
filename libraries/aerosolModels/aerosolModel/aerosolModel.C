@@ -50,7 +50,7 @@ void Foam::aerosolModel::versionInfo()
 	    << "multispecies aerosol flows with sectional and moment methods," << nl
 	    << "Journal of Aerosol Science, Volume 159, (2022)" << nl
 	    << "doi:10.1016/j.jaerosci.2021.105854" << nl
-	    << "Modified Version: 3.1 : Riya Dey, Jayant Krishan, S Anand"<<nl
+	    << "Modified Version: 3.1 : Riya Dey, Jayant Krishan, S Anand, Lucci Francesco "<<nl
 	    << nl
 	    << "###############################################################################" << nl
 	    << nl;

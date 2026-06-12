@@ -1,7 +1,7 @@
-                                                            AEROSOLVED-SF
-                                                     Version 3.1, 01 February 2026 
+                                                            AEROSOLVED-3.1
+                                                     Version 3.1, 13 June 2026 
                                     (modified from aerosolved 3.0, version accessed from website on 29.01.2026)
-                                                  Authors:Riya Dey, Jayant Krishan, S Anand
+                                                  Authors: Riya Dey, Jayant Krishan, S Anand, Lucci Francesco
 
 =======================================================================
                            RELEASE NOTES
@@ -114,7 +114,7 @@ ________________________________________________________________________________
  {                                                         {                                      {   
    particleShape     solid;                                 particleShape     fractal;             particleShape     custom;
    frdim             3.0;  // can be skipped in input       frdim             1.8;                 frdim             3;
-   monorad           1.0E-10; // can be skipped in input    monorad           1.0E-10;             monorad           1.0E-10;
+   monorad           1.0E-9; // can be skipped in input     monorad           1.0E-9;              monorad           1.0E-9;
    monorho           1000;   // can be skipped in input     monorho           1000;                monorho           1000;
  }                                                         }                                       dysfPfFm          1.5;
                                                                                                    dysfExpFm         0.0;
