@@ -46,7 +46,7 @@ Supported particle shapes (particleShape):
 
 	- solid: sets automatically frdim=3, pre-factors=1, exponents=0. No need to define monomer radius, monomer densiity or pre factor and exponents explicitly
 	
-	- fractal: requires frdim, monorad, monorho; No need to define pre factor and exponents explicitly, it will be auto-assigned.
+	- fractal: requires frdim, monorad, monorho; Supported default frdim values are 3, 2.49, 2.25, 2.20, 1.8. No need to define pre factor and exponents explicitly, it will be auto-assigned.
   		[Ref. Jayant et al., Nuclear Engineering and Design, 2025, Vol. 440]
   		
 	- custom: fully user-defined frdim, monorad, monorho, pre-factors (dysfPfFm, dysfPfTr, dysfPfCont) and 
