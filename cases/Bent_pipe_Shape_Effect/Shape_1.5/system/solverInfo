@@ -1,0 +1,9 @@
+
+// -*- C++ -*-
+
+#includeEtc "caseDicts/postProcessing/numerical/solverInfo.cfg"
+
+fields      ( p U rho);
+
+
+// ************************************************************************* //

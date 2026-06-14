@@ -1,0 +1,72 @@
+/*--------------------------------*- C++ -*----------------------------------*\
+  =========                 |				
+  \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox
+   \\    /   O peration     | Website:  https://openfoam.org
+    \\  /    A nd           | Version:  8                                   	
+     \\/     M anipulation  |
+\*---------------------------------------------------------------------------*/
+FoamFile
+{
+    version     2.0;
+    format      ascii;
+    class       dictionary;
+    object      functionObject;
+}
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+
+// This routine is to check mass balance across inlet, outlet and intermediate cutting planes, the face zone has been created using topoSet
+
+functions
+{
+
+    inlet_sumParticleFlux
+    {
+
+        type            surfaceFieldValue;
+        libs            ("libfieldFunctionObjects.so");
+        enabled         true;
+
+	writeControl     timeStep;
+	writeInterval    1;
+
+        log              true;
+
+        writeFields     false;
+
+        regionType      patch;
+        name            inlet;
+
+	operation        average;
+        fields
+        (
+            phiEff.M.01
+            phiEff.M.02
+            phiEff.M.03
+            phiEff.M.04
+            phiEff.M.05
+            phiEff.M.06
+            phiEff.M.07
+            phiEff.M.08
+            phiEff.M.09
+            phiEff.M.10
+            phiEff.M.11
+            phiEff.M.12
+            phiEff.M.13
+            phiEff.M.14
+            phiEff.M.15    
+            phiEff.M.16        
+
+        );
+    }
+
+
+
+}
+
+
+
+
+
+
+
+

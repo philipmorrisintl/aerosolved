@@ -148,7 +148,7 @@ Foam::aerosolModel::aerosolModel
        	 << "Found: " << particleShape_ << nl << exit(FatalError);
 	}
 
-
+      const scalar tol = 1e-3;
 
 if (modelType != "none")
 {
@@ -172,7 +172,7 @@ if (modelType != "none")
 	     monoRad_ = readScalar(subDict("sfparam").lookup("monorad"));
              monoRho_ = readScalar(subDict("sfparam").lookup("monorho"));
             
-        if (mag(frDim_ - 3.0) < SMALL || frDim_ > 2.99)
+        if (mag(frDim_ - 3.0) < tol)
         {
             dysfPfFm_    = 1.0;
             dysfExpFm_   = 0.0;
@@ -181,7 +181,7 @@ if (modelType != "none")
             dysfPfCont_  = 1.0;
             dysfExpCont_ = 0.0;
         }
-        else if (frDim_ < 3.0 && frDim_ >= 2.50)
+        else if (mag(frDim_ - 2.49) < tol)
         {
             dysfPfFm_    = 0.93;
             dysfExpFm_   = 0.49;
@@ -190,7 +190,7 @@ if (modelType != "none")
             dysfPfCont_  = 0.57;
             dysfExpCont_ = 0.40;
         }
-        else if (frDim_ < 2.50 && frDim_ >= 2.24)
+        else if (mag(frDim_ - 2.25) < tol)
         {
             dysfPfFm_    = 0.91;
             dysfExpFm_   = 0.54;
@@ -199,7 +199,7 @@ if (modelType != "none")
             dysfPfCont_  = 0.58;
             dysfExpCont_ = 0.43;
         }
-        else if (frDim_ < 2.24 && frDim_ >= 1.9)
+        else if (mag(frDim_ - 2.00) < tol)
         {
             dysfPfFm_    = 0.90;
             dysfExpFm_   = 0.56;
@@ -208,7 +208,7 @@ if (modelType != "none")
             dysfPfCont_  = 0.76;
             dysfExpCont_ = 0.40;
         }
-        else if (frDim_ < 1.9 && frDim_ >= 1.0)
+        else if (mag(frDim_ - 1.80) < tol)
         {
             dysfPfFm_    = 0.90;
             dysfExpFm_   = 0.58;
@@ -219,18 +219,32 @@ if (modelType != "none")
         }
         else
         {
-            WarningIn("aerosolModel::aerosolModel")
-                << "frdim = " << frDim_
-                << " is outside supported range (1.0 – 3.0)."
-                << " Please choose between 1. and 3." << endl;
+         
+         Info<< nl
+           << "ERROR: Invalid Df specified." << nl
+           << "Df = " << frDim_ << nl
+           << "Supported default values for Df in fractal mode are:" << nl
+           << "3.0, 2.49, 2.25, 2.00, 1.80" << nl
+           << "Rather use Custom mode in aerosolProperties."
+           << endl;
+
+         
+         FatalErrorIn("aerosolModel::aerosolModel")
+        << "Df = " << frDim_ << nl
+        << "Df out of default value."
+        << nl << "Supported default values for Df in fractal mode are:"
+        << nl << "3.0, 2.49, 2.25, 2.00, 1.80"
+        << nl <<"Rather use Custom mode in aerosolProperties."
+        
+        << exit(FatalError);
         }
     }
     
     else if (particleShape_ == "custom")
     {
         frDim_       = readScalar(subDict("sfparam").lookup("frdim"));
-        monoRad_ = readScalar(subDict("sfparam").lookup("monorad"));
-        monoRho_ = readScalar(subDict("sfparam").lookup("monorho"));
+        monoRad_     = readScalar(subDict("sfparam").lookup("monorad"));
+        monoRho_     = readScalar(subDict("sfparam").lookup("monorho"));
         dysfPfFm_    = readScalar(subDict("sfparam").lookup("dysfPfFm"));
         dysfExpFm_   = readScalar(subDict("sfparam").lookup("dysfExpFm"));
         dysfPfTr_    = readScalar(subDict("sfparam").lookup("dysfPfTr"));
