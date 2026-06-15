@@ -168,9 +168,9 @@ if (modelType != "none")
     else if (particleShape_ == "fractal")
     
     {       
-            frDim_    = readScalar(subDict("sfparam").lookup("frdim"));
-	     monoRad_ = readScalar(subDict("sfparam").lookup("monorad"));
-             monoRho_ = readScalar(subDict("sfparam").lookup("monorho"));
+            frDim_   = readScalar(subDict("sfparam").lookup("frdim"));
+            monoRad_ = readScalar(subDict("sfparam").lookup("monorad"));
+            monoRho_ = readScalar(subDict("sfparam").lookup("monorho"));
             
         if (mag(frDim_ - 2.49) < tol)
         {
