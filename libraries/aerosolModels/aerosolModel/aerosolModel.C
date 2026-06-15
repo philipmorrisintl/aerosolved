@@ -156,8 +156,8 @@ if (modelType != "none")
     if (particleShape_ == "solid")
     {
         frDim_       = 3.0;
-        monoRad_     = 1.0;  // not used, but set to avoid uninitialized values, should not be non zero
-        monoRho_     = 1.0;  // not used, but set to avoid uninitialized values, should not be non zero
+        monoRad_     = 1.0;  // not used, but set to avoid uninitialized values, should be non zero
+        monoRho_     = 1.0;  // not used, but set to avoid uninitialized values, should be non zero
         dysfPfFm_    = 1.0;
         dysfExpFm_   = 0.0;
         dysfPfTr_    = 1.0;
@@ -172,16 +172,7 @@ if (modelType != "none")
 	     monoRad_ = readScalar(subDict("sfparam").lookup("monorad"));
              monoRho_ = readScalar(subDict("sfparam").lookup("monorho"));
             
-        if (mag(frDim_ - 3.0) < tol)
-        {
-            dysfPfFm_    = 1.0;
-            dysfExpFm_   = 0.0;
-            dysfPfTr_    = 1.0;
-            dysfExpTr_   = 0.0;
-            dysfPfCont_  = 1.0;
-            dysfExpCont_ = 0.0;
-        }
-        else if (mag(frDim_ - 2.49) < tol)
+        if (mag(frDim_ - 2.49) < tol)
         {
             dysfPfFm_    = 0.93;
             dysfExpFm_   = 0.49;
@@ -224,8 +215,8 @@ if (modelType != "none")
            << "ERROR: Invalid Df specified." << nl
            << "Df = " << frDim_ << nl
            << "Supported default values for Df in fractal mode are:" << nl
-           << "3.0, 2.49, 2.25, 2.00, 1.80" << nl
-           << "Rather use Custom mode in aerosolProperties."
+           << "2.49, 2.25, 2.00, 1.80" << nl
+           << "If Df =3, use solid mode, else use custom mode in aerosolProperties."
            << endl;
 
          
@@ -233,8 +224,8 @@ if (modelType != "none")
         << "Df = " << frDim_ << nl
         << "Df out of default value."
         << nl << "Supported default values for Df in fractal mode are:"
-        << nl << "3.0, 2.49, 2.25, 2.00, 1.80"
-        << nl <<"Rather use Custom mode in aerosolProperties."
+        << nl << "2.49, 2.25, 2.00, 1.80"
+        << nl <<"If Df =3, use solid mode, else use custom mode in aerosolProperties."
         
         << exit(FatalError);
         }
