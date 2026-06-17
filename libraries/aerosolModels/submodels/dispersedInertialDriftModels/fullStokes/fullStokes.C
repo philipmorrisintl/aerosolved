@@ -23,7 +23,6 @@ License
 #include "rhoAerosolPhaseThermo.H"
 #include "gaussConvectionScheme.H"
 #include "constants.H"
-#include <fstream> // For file I/O
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
