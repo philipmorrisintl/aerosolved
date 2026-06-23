@@ -52,5 +52,5 @@ These studies are key references upon which AeroSolved is based or validated:
 * Whitby, E. R., & McMurry, P. H. (1997). Modal aerosol dynamics modeling. _Aerosol Science and Technology_, 27(6), 673-688.
 * Wilck, M., & Stratmann, F. (1997). A 2-D multicomponent modal aerosol model and its application to laminar flow reactors. _Journal of Aerosol Science_, 28(6), 959-972.
 * Zhang, Z., Kleinstreuer, C., & Hyun, S. (2012). Size-change and deposition of conventional and composite cigarette smoke particles during inhalation in a subject-specific airway model. _Journal of Aerosol Science_, 46, 34-52.
-* Jayant Krishan, S. Anand, A. Singh, T. Thajudeen, Jyoti Seth, Y.S. Mayya(2025). Effect of non-spherical morphology on aerosol evolution in reactor containment using size-dependent dynamic shape factors. Nuclear Engineering and Design. Volume 440, 114136.
+* Jayant Krishan, S. Anand, A. Singh, T. Thajudeen, Jyoti Seth, Y.S. Mayya (2025). Effect of non-spherical morphology on aerosol evolution in reactor containment using size-dependent dynamic shape factors. Nuclear Engineering and Design. Volume 440, 114136.
 * Jacobson M Z (2005). Fundamentals of Atmospheric Modelling. Cambridge University Press.
