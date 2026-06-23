@@ -68,14 +68,28 @@ New switches introduced:
 
 - Kelvin effect:     KelvinEffect: true/false
 - Fuchs–Sutugin:     FuchsCorrection: true/false
+- Droplet temperature correction: DropletTemperatureCorrection: true/false
 
-Defaults: both are false if not specified.
+Defaults: all switches are set to false if not specified.
 
 Additional options:
 
- - Define saturation ration via the variable SR
- - solute & soluteLimit: if solute is present, the name of the solute species alomg with the critical mass fraction 
-                         of the solute to terminate the evaporation/condensation can be added
+ - SR: Saturation ratio of the surrounding gas (SR = pv/psat), used only when
+       DropletTemperatureCorrection is enabled. Typical values are:
+    SR = 0.0 → dry air (0% RH)
+    SR = 0.55 → 55% RH
+    SR = 1.0 → saturated air (100% RH)
+    SR > 1.0 → supersaturated conditions
+
+Note: If DropletTemperatureCorrection is enabled, SR must be specified.
+
+ - solute & soluteLimit:
+ 
+    If a solute species is present in the dispersed phase, the solute name
+    and a critical solute mass fraction can be specified. When the solute
+    mass fraction exceeds the specified limit, evaporation/condensation is
+    terminated.
+
 
 Example usage: see Ex. 2.
 
@@ -135,7 +149,7 @@ Ex.2. Condensation model
         KelvinEffect        true;
         
         FuchsCorrection     true;
-        
+        DropletTemperatureCorrection true;
         SR    0.55;
         solute       NaCl;
         soluteLimit  0.357;

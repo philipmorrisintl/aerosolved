@@ -45,6 +45,9 @@ private:
         //- Switch to turn on the Fuchs correction (defaults to false)
         Switch FuchsCorrection_;
         
+        // - Droplet temperature correction, Refer: Hinds 1999
+        Switch DropletTemperatureCorrection_;
+        
         // - Define saturation ratio or relative humidity
         scalar SR_;
         

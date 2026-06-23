@@ -44,10 +44,31 @@ coupledCondensation::coupledCondensation
     condensationModel(type(), aerosol, dict),
     KelvinEffect_(dict.lookupOrDefault<Switch>("KelvinEffect", false)),
     FuchsCorrection_(dict.lookupOrDefault<Switch>("FuchsCorrection", false)),
+    DropletTemperatureCorrection_(dict.lookupOrDefault<Switch>("DropletTemperatureCorrection",false)), 
+
+    
     SR_(dict.lookupOrDefault<scalar>("SR", 0.0)),   //Default is 0
     soluteName_(dict.lookupOrDefault<word>("solute", "none")),
     soluteLimit_(dict.lookupOrDefault<scalar>("soluteLimit", -1.0))
-{}
+{
+    if (DropletTemperatureCorrection_ && !dict.found("SR"))
+    {
+        FatalErrorInFunction
+            << "DropletTemperatureCorrection is enabled but "
+            << "SR is not specified."
+            << nl
+            << "Please provide SR in the dictionary."
+            << exit(FatalError);
+    }
+
+    if (DropletTemperatureCorrection_ && SR_ < 0.0)
+    {
+        FatalErrorInFunction
+            << "SR must be >= 0.0. Current value: "
+            << SR_
+            << exit(FatalError);
+    }
+}
 
 
 // * * * * * * * * * * * * * * * * Destructor  * * * * * * * * * * * * * * * //
@@ -183,14 +204,19 @@ conData coupledCondensation::rate
 
 
         // Effect of droplet temperature
-        
 
-	 	const scalar dTdrop =
-    			((6.65 + 0.345*(T-273.15) + 0.0031*sqr(T-273.15)) * (SR_ - 1.0))
-  				/ (1.0 + (0.082 + 0.00782*(T-273.15))*SR_);
+	scalar dTdrop = 0.0;
 
-		const scalar DropletTemp = (T + dTdrop);  
+	if (DropletTemperatureCorrection_)
+	{
+    		dTdrop = (
+          ((6.65 + 0.345*(T-273.15)
+           + 0.0031*sqr(T-273.15))* (SR_ - 1.0))/(1.0 + (0.082 + 0.00782*(T-273.15))*SR_)
+    	                 );
+	}
 
+        const scalar DropletTemp = T + dTdrop;
+         
         // Kelvin effect factor
 
         scalar Ke = 1.0;
@@ -227,17 +253,35 @@ conData coupledCondensation::rate
        	beta = (1.0+ Kn)/(1.0 +1.71 * Kn + 1.333 * Kn * Kn);
        
         }
-        
-        // Compute saturation vapour pressure at droplet temperature 
-        	const scalar pSat_DropletTemp =
-                         1e3 * Foam::exp(16.7 - (4060.0 / (DropletTemp - 37.0))); // Pa (eq. 13.2 Hinds, 1999)
+
         
         // Compute pressures
 
-        const scalarList pSurf(gamma*Ke*pSat_DropletTemp*w);
+        
         const scalarList pVap(p*x);
         const scalarList pVapOverY(p/W/sum(Y/W));
-        const scalarList pSurfOverZ(gamma*Ke*pSat_DropletTemp/Wd/sum(Z/Wd));
+        
+        scalarList pSurf(activeSpecies.size(), 0.0);
+        scalarList pSurfOverZ(activeSpecies.size(), 0.0);
+        
+        
+        if (DropletTemperatureCorrection_)
+	{
+    		// Compute saturation vapour pressure at droplet temperature // Pa (eq. 13.2 Hinds, 1999)
+    		const scalar pSat_DropletTemp =
+        	1e3*Foam::exp(16.7 - (4060.0/(DropletTemp - 37.0)));
+
+          pSurf = gamma*Ke*pSat_DropletTemp*w;
+
+          pSurfOverZ = gamma*Ke*pSat_DropletTemp/Wd/sum(Z/Wd);
+        }
+        else
+        {
+          pSurf = gamma*Ke*pSat*w;
+
+          pSurfOverZ = gamma*Ke*pSat/Wd/sum(Z/Wd);
+        }
+        
 
         // Compute xi
 

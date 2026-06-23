@@ -56,6 +56,7 @@ submodels
         
         FuchsCorrection     true;
         
+        DropletTemperatureCorrection true;
         SR    0.55;
         solute       NaCl;
         soluteLimit  0.357;
