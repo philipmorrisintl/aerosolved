@@ -109,7 +109,7 @@ The kernel works for both fractal and solid spherical particles. The monomer
 radius must be smaller than the smallest size in the input distribution.
 
 
-[Ref. Jacobson, Fundamentals of Atmospheric Modeling, 2004]
+[Ref. Jacobson, Fundamentals of Atmospheric Modeling, 2005]
 
 =======================================================================
 
