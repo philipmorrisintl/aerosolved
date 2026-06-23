@@ -71,14 +71,14 @@ with $p$ representing pressure; $\tau_m$, mixture viscous stress tensor; $\tau_m
 The mixture energy transport equation is formulated in terms of the temperature $T$. This is more convenient when specifying boundary conditions, which are usually adiabatic or isothermal. The energy transport equation is given by:
 
 $$
-  c_v[\partial_t (\rho_m T) + \nabla\cdot(\rho_m\mathbf{u}_m T)] = \nabla\cdot(\kappa_m \nabla T) + \nabla\cdot(\kappa_m^\mathrm{turb} \nabla T) - \nabla\cdot(\mathbf{u}p) - \mathrm{D}_t K + \dot{Q},
+  c_v[\partial_t (\rho_m T) + \nabla\cdot(\rho_m\mathbf{u}_m T)] = \nabla\cdot(\kappa_m \nabla T) + \nabla\cdot(\kappa_m^\mathrm{turb} \nabla T) - \nabla\cdot(\mathbf{u}p) - \mathrm{D}_t (\rho_m K) + \dot{Q},
 $$
 
-with $c_v$ representing heat capacity at constant volume; $\kappa_m$, mixture thermal conductivity; $\kappa_m^\mathrm{turb}$, mixture turbulent thermal conductivity; $K=\frac{1}{2}|\mathbf{u}|^2$, kinetic energy; $\dot{Q}$, and heat source .
+with $c_v$ representing heat capacity at constant volume; $\kappa_m$, mixture thermal conductivity; $\kappa_m^\mathrm{turb}$, mixture turbulent thermal conductivity; $\rho_m K=\frac{1}{2} \rho_m |\mathbf{u}|^2$, kinetic energy; $\dot{Q}$, and heat source .
 
 ### Population balance equation  
 
-In addition to the mass fractions $Z_j$, the dispersed phase is also described by particle size distribution $n(d)$, with diameter $d$ in m. The size distribution is defined in such a way that $n(d)\mathrm{d}d$ gives the total number of particles per unit of volume with size $[d,d+\mathrm{d}d]$. The $\gamma$th length moment of the size distribution is defined as
+In addition to the mass fractions $Z_j$, the dispersed phase is also described by particle size distribution $n(d)$, with diameter $d$ in m. The size distribution is defined in such a way that $n(d)\mathrm{d}d$ gives the total number of particles per unit of volume with size $[d,d+\mathrm{d}d]$. The $\gamma^{th}$ length moment of the size distribution is defined as
 
 $$
   \mathcal{N}_\gamma = \int_0^\infty d^\gamma n(d)\mathrm{d}d
@@ -183,7 +183,7 @@ $$
   \beta(a,b) = \tilde{K} (a+b)^2 (1/a^{3/2} + 1/b^{3/2})
 $$
 
-In these equations $Kn$ is the Knudsen number; $K$ and $\tilde{K}$ are coalescence coefficients $K=2k_B T/3\mu$ and $\tilde{K} = b3\sqrt{3}/2\sqrt{\mu^2/(\rho_\ell k_B T)}K$  with the Boltzmann's constant $k_B$,  temperature $T$,  gas viscosity $\mu$, liquid mass density $\rho_\ell$,  mean free path $\lambda$, coefficients $A=1.591$, and $b$ (see [Lee & Chen (1984)](https://doi.org/10.1080/02786828408959020)).
+In these equations $Kn$ is the Knudsen number; $K$ and $\tilde{K}$ are coalescence coefficients $K=2k_B T/3\mu$ and $\tilde{K} = b3\sqrt{3}/2 \sqrt{ \mu^2 / (\rho_\ell k_B T) } K $  with the Boltzmann's constant $k_B$,  temperature $T$,  gas viscosity $\mu$, liquid mass density $\rho_\ell$,  mean free path $\lambda$, coefficients $A=1.591$, and $b$ (see [Lee & Chen (1984)](https://doi.org/10.1080/02786828408959020)).
 
 In order to capture the transition from one regime to the other, also a harmonic mean of the gas-slip and free-molecule coalescence kernel is implemented.
 
@@ -202,9 +202,11 @@ $$
 $$
 
 with $\gamma=\rho_c/\rho_d$, gravitational acceleration vector $\mathbf{g}$ and Stokes particle relaxation time
+
 $$
   \tau = \frac{\rho_d d^2}{18\mu}.
 $$
+
 Note that the algebraic drift model is only valid for small particle Stokes numbers. It was shown that the algebraic model fails for large particle Stokes numbers  [Frederix (2016)](http://dx.doi.org/10.3990/1.9789036542289).
 
 
@@ -239,11 +241,12 @@ with Cunningham correction factor $C_c$.
 `libraries/aerosolModels/fixedSectional/derivedFvPatchFields/sectionalSubGridDepositionVelocity/`
 
 This boundary condition uses the analytical solution to one-dimensional particle motion subject to Stokes drag to compute the particle velocity at the wall ([Frederix (2018)](https://doi.org/10.1016/j.compfluid.2017.09.018)). In scaled form, the particle equation of motion is given by
+
 $$
 \ddot{x}(t) + \dot{x}(t) + ux(t) = g
 $$
 
-The particle velocity at the wall is then given by $v = \dot{x}(t^*)$, with $t^*$ representing the impaction time at the wall of the particle. 
+The particle velocity at the wall is then given by $v = \dot{x}(t^*)$ , with $t^*$ representing the impaction time at the wall of the particle. 
 
 ## The aerosolEulerFoam solver
 

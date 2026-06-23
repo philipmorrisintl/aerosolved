@@ -8,7 +8,7 @@ The AeroSolved project is led and funded by Philip Morris International R&D (PMI
 
 #### Citation
 
-If you find this project helpful or use it in your work, please cite it using the and present repository its reference paper:
+If you find this project helpful or use it in your work, please cite it using the present repository and its reference paper:
 
 * AeroSolved (2019). GitHub repository, https://github.com/philipmorrisintl/aerosolved
 * Lucci, F., Frederix, E. M. A., & Kuczaj, A. K. (2022). AeroSolved: Computational fluid dynamics modeling of multispecies aerosol flows with sectional and moment methods, _Journal of Aerosol Science_,  159, 105854
