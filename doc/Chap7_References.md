@@ -27,6 +27,7 @@ These studies are published by the authors and contributors of AeroSolved, and a
 * Winkelmann, C., Kuczaj, A.K., Nordlund, M. & Geurts, B. J. (2018). Simulation of aerosol formation due to rapid cooling of multispecies vapors. _Journal of Engineering Mathematics_, 108, 171-196. 
 * Winkelmann, C. , Nordlund, M. , Kuczaj, A. K., Stolz, S. & Geurts, B. (2014)., Efficient second‐order time integration for single‐species aerosol formation and evolution. _Int. J. for Numerical Methods in Fluids_, 74: 313-334.
 * Zacchei, F., Lucci, F., Frederix, E. M. A., Tajfirooz, S., & Kuczaj, A. (2025).  Aerosolved: Wall Boundary Conditions for Liquid Multispecies Aerosol Deposition at Transient and High-Humidity Flows, _Journal of Aerosol Science_. 
+* Riya Dey, Jayant Krishan, S Anand, Francesco Lucci(2026).  Aerosolved v3.1: A CFPD-based framework for morphology-dependent aerosol transport and population dynamics. (Under preparation) 
 
 ## List of other publications
 
