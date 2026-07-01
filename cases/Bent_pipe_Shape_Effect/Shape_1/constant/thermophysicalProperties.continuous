@@ -1,0 +1,75 @@
+FoamFile
+{
+    version     2.0;
+    format      ascii;
+    class       dictionary;
+    location    "constant";
+    object      thermophysicalProperties.continuous;
+}
+
+thermoType
+{
+    type            heAerosolRhoThermo;
+    mixture         aerosolPhase;
+    transport       const;
+    thermo          eConst;
+    energy          sensibleInternalEnergy;
+    equationOfState perfectGas;
+    specie          specie;
+}
+
+species
+{
+    Air
+    {
+        specie
+        {
+            molWeight       28.9596; // Gives density of 1.183704895 kg/m3 at 298.15K
+        }
+        thermodynamics
+        {
+            Cv              1e3;
+            Hf              0;
+        }
+        transport
+        {
+            mu              1.837E-05;
+            Pr              1;
+        }
+        diffusivities
+        {
+            Air             FullerSchettlerGiddings;
+            Water           FullerSchettlerGiddings;
+        }
+        properties
+        {
+            Vd              constant 19.7;
+        }
+    }
+
+    Water
+    {
+        specie
+        {
+            molWeight       18.0153;
+        }
+        thermodynamics
+        {
+            Cv             1e3;
+            Hf              0;
+        }
+        transport
+        {
+            mu              1E-5;
+            Pr              1;
+        }
+        diffusivities
+        {
+            Water           FullerSchettlerGiddings;
+        }
+        properties
+        {
+            Vd              constant 20;
+        }
+    }
+}

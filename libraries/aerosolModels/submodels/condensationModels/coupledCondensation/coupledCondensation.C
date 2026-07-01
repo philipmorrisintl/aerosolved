@@ -42,8 +42,33 @@ coupledCondensation::coupledCondensation
 )
 :
     condensationModel(type(), aerosol, dict),
-    KelvinEffect_(dict.lookupOrDefault<Switch>("KelvinEffect", false))
-{}
+    KelvinEffect_(dict.lookupOrDefault<Switch>("KelvinEffect", false)),
+    FuchsCorrection_(dict.lookupOrDefault<Switch>("FuchsCorrection", false)),
+    DropletTemperatureCorrection_(dict.lookupOrDefault<Switch>("DropletTemperatureCorrection",false)), 
+
+    
+    SR_(dict.lookupOrDefault<scalar>("SR", 0.0)),   //Default is 0
+    soluteName_(dict.lookupOrDefault<word>("solute", "none")),
+    soluteLimit_(dict.lookupOrDefault<scalar>("soluteLimit", -1.0))
+{
+    if (DropletTemperatureCorrection_ && !dict.found("SR"))
+    {
+        FatalErrorInFunction
+            << "DropletTemperatureCorrection is enabled but "
+            << "SR is not specified."
+            << nl
+            << "Please provide SR in the dictionary."
+            << exit(FatalError);
+    }
+
+    if (DropletTemperatureCorrection_ && SR_ < 0.0)
+    {
+        FatalErrorInFunction
+            << "SR must be >= 0.0. Current value: "
+            << SR_
+            << exit(FatalError);
+    }
+}
 
 
 // * * * * * * * * * * * * * * * * Destructor  * * * * * * * * * * * * * * * //
@@ -74,6 +99,43 @@ conData coupledCondensation::rate
     const scalar NA = constant::physicoChemical::NA.value();
 
     aerosolThermo& thermo = aerosol_.thermo();
+    
+    // Search if there is solute
+    static label soluteDispIndex = -2;  // -2 not searched, -1 not found
+    
+        if (soluteDispIndex == -2)
+    {
+        soluteDispIndex = -1;
+
+        if (soluteName_ != "none")
+        {
+            const speciesTable& dispSpec =
+                thermo.thermoDisp().composition().species();
+
+            forAll(dispSpec, i)
+            {
+                if (dispSpec[i] == soluteName_)
+                {
+                    soluteDispIndex = i;
+                    break;
+                }
+            }
+
+            if (soluteDispIndex >= 0)
+            {
+                Info<< "coupledCondensation: Solute '" << soluteName_
+                    << "' found in dispersed phase at index "
+                    << soluteDispIndex << endl;
+            }
+            else
+            {
+                Warning<< "coupledCondensation: Solute '" << soluteName_
+                       << "' NOT found in dispersed phase. Solute effects disabled."
+                       << endl;
+            }
+        }
+    }
+
 
     rhoAerosolPhaseThermo& thermoCont = thermo.thermoCont();
 
@@ -88,11 +150,37 @@ conData coupledCondensation::rate
     const scalar sumZ(min(sum(Z), 1.0));
 
     conData data(activeSpecies.size());
+    
+    // -------------------------------------------------
+    // Solute limiting condition (if enabled)
+    // -------------------------------------------------
+    if (soluteDispIndex >= 0 && soluteLimit_ > 0.0 && sumZ > 1E-30 && (sumY - sumYa) > 0.0)
+    {
+        const scalar Zsolute = Z[soluteDispIndex] / sumZ;
+
+        if (Zsolute >= soluteLimit_)
+        {
+            data.active() = false;
+
+            forAll(data.source(), j)
+            {
+                data.source()[j] = 0.0;
+                data.sink()[j]   = 0.0;
+            }
+
+            return data;
+        }
+    }
+
+    // -------------------------------------------------
+    // Normal condensation
 
     // Check if we have an adequate mixture
 
-    if (sumZ > 1E-20 && (sumY-sumYa) > 0.0)
-    {
+    if (sumZ > 1E-30 && (sumY-sumYa) > 0.0)
+    
+    {   
+
         data.active() = true;
 
         scalarList W(Y.size(), 0.0);
@@ -114,6 +202,21 @@ conData coupledCondensation::rate
         const scalarList y(Y/sumY);
         const scalarList x(y/W/sum(y/W));
 
+
+        // Effect of droplet temperature
+
+	scalar dTdrop = 0.0;
+
+	if (DropletTemperatureCorrection_)
+	{
+    		dTdrop = (
+          ((6.65 + 0.345*(T-273.15)
+           + 0.0031*sqr(T-273.15))* (SR_ - 1.0))/(1.0 + (0.082 + 0.00782*(T-273.15))*SR_)
+    	                 );
+	}
+
+        const scalar DropletTemp = T + dTdrop;
+         
         // Kelvin effect factor
 
         scalar Ke = 1.0;
@@ -125,19 +228,60 @@ conData coupledCondensation::rate
             const scalar vl = sum(w*Md)/rhol;
             const scalar sigmal = sum(w*sigma);
 
-            Ke = exp(4.0*sigmal*vl/(kB*T*d));
+            Ke = exp(4.0*sigmal*vl/(kB*DropletTemp*d));
         }
 
-        // Set Fuchs & Sutugin correction factor to unity, for now
+        // Set Fuchs & Sutugin correction factor
 
         scalar beta = 1.0;
 
+        if (FuchsCorrection_)
+        {	
+       	// Compute lambda
+       
+       	const label jInert(thermoCont.species()[aerosol_.thermo().inertSpecie()]);
+       	const scalar mu(compCont.mu(jInert, p, T));
+       	const scalar mg(0.001*W[jInert]/NA);
+       
+       	const scalar lambda
+    			(
+        			Foam::sqrt(8.0*kB*T/(pi*mg)) * 4.0/5.0*mu/p
+    			);
+            
+       	const scalar Kn = 2.0 * lambda / max(d, aerosol_.dMin());
+       	
+       	beta = (1.0+ Kn)/(1.0 +1.71 * Kn + 1.333 * Kn * Kn);
+       
+        }
+
+        
         // Compute pressures
 
-        const scalarList pSurf(gamma*Ke*pSat*w);
+        
         const scalarList pVap(p*x);
         const scalarList pVapOverY(p/W/sum(Y/W));
-        const scalarList pSurfOverZ(gamma*Ke*pSat/Wd/sum(Z/Wd));
+        
+        scalarList pSurf(activeSpecies.size(), 0.0);
+        scalarList pSurfOverZ(activeSpecies.size(), 0.0);
+        
+        
+        if (DropletTemperatureCorrection_)
+	{
+    		// Compute saturation vapour pressure at droplet temperature // Pa (eq. 13.2 Hinds, 1999)
+    		const scalar pSat_DropletTemp =
+        	1e3*Foam::exp(16.7 - (4060.0/(DropletTemp - 37.0)));
+
+          pSurf = gamma*Ke*pSat_DropletTemp*w;
+
+          pSurfOverZ = gamma*Ke*pSat_DropletTemp/Wd/sum(Z/Wd);
+        }
+        else
+        {
+          pSurf = gamma*Ke*pSat*w;
+
+          pSurfOverZ = gamma*Ke*pSat/Wd/sum(Z/Wd);
+        }
+        
 
         // Compute xi
 

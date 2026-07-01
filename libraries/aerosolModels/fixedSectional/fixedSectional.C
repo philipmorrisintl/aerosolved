@@ -21,8 +21,38 @@ License
 #include "fixedSectional.H"
 #include "fv.H"
 #include "fvOptions.H"
+#include "constants.H"
+#include "aerosolModel.H"
+#include "rhoAerosolPhaseThermo.H"
+#include "OSspecific.H"
+
 
 // * * * * * * * * * * * * * * Static Data Members * * * * * * * * * * * * * //
+
+namespace Foam
+{
+namespace aerosolModels
+{
+	inline scalar computeFractalDiameter(scalar ds, scalar N, scalar Df)
+	{
+    		return ds * pow(N, 1.0 / Df);
+	}
+
+	inline scalar computeMobilityDiameter(scalar ds, scalar N, scalar Df, scalar dfractal)
+	{
+    		scalar t1 = (1.0 / 3.0) * Df * pow(N, (2.0 / Df));
+    		scalar t2 = 1.0 + (2.0 / 3.0) * (N - 1);
+    		scalar t3 = min(t1, t2);
+    		scalar t4 = pow(N, (2.0 / 3.0));
+    		scalar t5 = max(t3, t4);
+    		scalar t6 = ds * pow(t5, 0.5);
+    		scalar t7 = dfractal * pow(0.5 * (Df - 1.0), 0.7);
+    		scalar t8 = dfractal / (log(dfractal / ds) + 1.0);
+    		return max(max(t6, t7), t8);
+	}
+
+} 
+} 
 
 namespace Foam
 {
@@ -478,12 +508,129 @@ void Foam::aerosolModels::fixedSectional::solveInternal()
         }
     }
 
-    // Coalescence
+// Coalescence
 
-    if (coalescence_->modelType() != "none")
+if (coalescence_->modelType() != "none")
+{
+    const scalar gMag = max(mag(g_), SMALL);
+
+    // Detect turbulence on/off
+    const IOdictionary& turbProps =
+        db().lookupObject<IOdictionary>("turbulenceProperties");
+
+    const word simulationType(turbProps.get<word>("simulationType"));
+    const bool turbulenceOn = (simulationType == "RAS" || simulationType == "LES");
+
+    // --------------------------------------------------
+    // epsilon estimation
+    // --------------------------------------------------
+
+    const volScalarField* epsilon = nullptr;
+
+    static autoPtr<volScalarField> epsilonTmpPtr;      // for kOmega/SST
+    static autoPtr<volScalarField> epsilonDefaultPtr; // fallback
+
+    if (turbulenceOn)
     {
+        // 1) k-epsilon, LES, or user-provided epsilon
+        if (db().foundObject<volScalarField>("epsilon"))
+        {
+            epsilon = &db().lookupObject<volScalarField>("epsilon");
+        }
+        // 2) k-omega / k-omega-SST: build epsilon = betaStar * k * omega
+        else if
+        (
+            db().foundObject<volScalarField>("omega") &&
+            db().foundObject<volScalarField>("k")
+        )
+        {
+            const volScalarField& omega =
+                db().lookupObject<volScalarField>("omega");
+
+            const volScalarField& k =
+                db().lookupObject<volScalarField>("k");
+
+            const scalar betaStar = 0.09;
+
+            if (!epsilonTmpPtr.valid())
+            {
+                epsilonTmpPtr.reset
+                (
+                    new volScalarField
+                    (
+                        IOobject
+                        (
+                            "epsilonFromOmega",
+                            mesh_.time().timeName(),
+                            mesh_,
+                            IOobject::NO_READ,
+                            IOobject::NO_WRITE,
+                            false
+                        ),
+                        betaStar * omega * k
+                    )
+                );
+            }
+            else
+            {
+                epsilonTmpPtr() = betaStar * omega * k;
+            }
+
+            epsilon = epsilonTmpPtr.get();
+        }
+    }
+
+    // 3) fallback epsilon (missing turbulence fields)
+    if (!epsilon)
+    {
+        if (!epsilonDefaultPtr.valid())
+        {
+            epsilonDefaultPtr.reset
+            (
+                new volScalarField
+                (
+                    IOobject
+                    (
+                        "epsilonDefault",
+                        mesh_.time().timeName(),
+                        mesh_,
+                        IOobject::NO_READ,
+                        IOobject::NO_WRITE,
+                        false
+                    ),
+                    mesh_,
+                    dimensionedScalar
+                    (
+                        "epsilon",
+                        dimensionSet(0, 2, -3, 0, 0, 0, 0),
+                        1e-6
+                    )
+                )
+            );
+        }
+
+        epsilon = epsilonDefaultPtr.get();
+
+        if (turbulenceOn)
+        {
+        WarningInFunction
+            << "epsilon not found in turbulence model. "
+            << "Using default epsilon = 1e-6" << endl;
+        }
+    }
+
+    // --------------------------------------------------
+  
         const scalarField mug(thermo_.thermoCont().mu());
         const scalarField rhog(thermo_.thermoCont().rho());
+        
+        const scalar pi = constant::mathematical::pi;
+        const scalar kB = constant::physicoChemical::k.value();
+        const scalar NA = constant::physicoChemical::NA.value();
+               
+      
+    	
+    	const scalar R = constant::physicoChemical::R.value();
 
         const PtrList<coalescencePair>& pairs =
             system_->coalescencePairs();
@@ -492,52 +639,200 @@ void Foam::aerosolModels::fixedSectional::solveInternal()
         {
             system_->generateCoalescencePairs();
         }
+        
+         // Choose particle shape type: "fractal"/"custom" or "solid"
+	       const word& particleShape = particleShape_;
 
         forAll(rho, celli)
         {
-            const coaData cdata
-            (
-                coalescence_->rate
-                (
-                    p[celli],
-                    T[celli],
-                    mug[celli],
-                    rhog[celli],
-                    rhol[celli],
-                    dcm[celli]
-                )
-            );
-
-            if (cdata.active())
-            {
                 scalarList d(sections.size(), 0.0);
                 scalarList M0(dist.size(), 0.0);
-
+                
+                scalarList N(sections.size(), 0.0); // Number of monomers per aggregate
+                scalarList volEqDiam(sections.size(), 0.0);  // Volume-equivalent diameter
+                
+                scalarList ds_list(sections.size(), 0.0);
+                scalarList Df_list(sections.size(), 0.0);
+                
                 forAll(sections, i)
                 {
                     d[i] = dist[i].d(rhol[celli]);
                     M0[i] = max(sections[i].M().field()[celli], 0.0);
-                }
+                    
+				if (particleShape == "fractal" || particleShape == "custom")
+					{
+					// -------------------------------
+					// Fractal/aggregate calculations
+					// -------------------------------
+							
+					const scalar ds = 2.0 * monoRad();
+					const scalar Df = frDim();
+					const scalar mono_rho = monoRho();
+							
+					scalar V_agg     = (pi / 6.0) * pow(d[i], 3);
+					scalar V_monomer = (pi / 6.0) * pow(ds, 3);
 
+					N[i] = (V_agg / V_monomer) * (rhol[celli] / mono_rho);   //number of monomers N_i = M_agg / M_monomer
+					volEqDiam[i] = pow(6.0 * V_agg / pi, 1.0 / 3.0);
+							
+					ds_list[i] = ds;
+					Df_list[i] = Df;
+							
+				
+					}
+				else if (particleShape == "solid")
+					{
+					// -------------------------------
+					// Pure spherical particle
+					// -------------------------------
+					N[i] = 1.0;  // not used, but set to avoid uninitialized values
+					volEqDiam[i] = d[i];  // volume-equivalent diameter = actual diameter
+							
+					ds_list[i] = 0.0;   // dummy
+                                       Df_list[i] = 0.0;   // dummy
+					}
+		} 
+
+            
                 forAll(pairs, k)
                 {
                     const coalescencePair& pair = pairs[k];
 
                     const label i(pair.i());
                     const label j(pair.j());
+                    
+                  
+                  // ---------------------------
+    	          // Diameters & Mass
+                 // ---------------------------
+			scalar dfi = VSMALL, dfj = VSMALL;   // fractal diameters
+			scalar dmi = VSMALL, dmj = VSMALL;   // mobility diameters
+			scalar mi  = VSMALL, mj  = VSMALL;   // particle masses
+                      
+                    // ==============================================
+                		// Fractal/Custom And Solid Diameter Calculations (Jacobson Model)
+                   // ==============================================
 
-                    scalar beta(0.0);
 
-                    forAll(cdata.w(), l)
-                    {
-                        beta +=
-                            cdata.w()[l]
-                          * (
-                                pow(d[i],cdata.p()[l])*pow(d[j],cdata.q()[l])
-                              + pow(d[i],cdata.q()[l])*pow(d[j],cdata.p()[l])
-                            );
-                    }
+    		if (particleShape == "fractal" || particleShape == "custom")
+    			{
+        			// === FRACTAL MODEL ===
+        		dfi = computeFractalDiameter(ds_list[i], N[i], Df_list[i]);
+        		dfj = computeFractalDiameter(ds_list[j], N[j], Df_list[j]);
 
+        		dmi = computeMobilityDiameter(ds_list[i], N[i], Df_list[i], dfi);
+        		dmj = computeMobilityDiameter(ds_list[j], N[j], Df_list[j], dfj);
+
+        		mi = (pi / 6.0) * rhol[celli] * pow(ds_list[i], 3) * N[i]; // mass of fractal = N * mass of monomar
+        		mj = (pi / 6.0) * rhol[celli] * pow(ds_list[j], 3) * N[j];
+    			}
+    		else if (particleShape == "solid")
+    			{
+        			// === PURE SPHERICAL MODEL ===
+        		dfi = d[i];
+        		dfj = d[j];
+
+        		dmi = d[i];
+        		dmj = d[j];
+
+        		mi = (pi / 6.0) * rhol[celli] * pow(d[i], 3);
+        		mj = (pi / 6.0) * rhol[celli] * pow(d[j], 3);
+    			}
+
+                    
+                    // ==============================================
+                		// Fractal Diameter Calculations (Jacobson Model)
+                   // ==============================================
+
+
+             scalar m_gas = rhog[celli] * R * T[celli] / p[celli] / NA;
+
+            // Air mean free path
+            
+            scalar lambda = mug[celli] / p[celli] * sqrt(pi * kB * T[celli] / (2.0 * m_gas));
+            
+            // Knudsen number for fractals
+
+            scalar kni = 2.0 * lambda / dmi;
+            scalar knj = 2.0 * lambda / dmj;
+            
+            // Cunningham slip correction for fractals
+            
+            scalar Cci = 1.0 + (kni/2.0) * (2.34 + 1.05 * exp(-0.39 / (kni/2.0)));
+            scalar Ccj = 1.0 + (knj/2.0) * (2.34 + 1.05 * exp(-0.39 / (knj/2.0)));
+            
+            // Particle diffusion coefficient for fractals
+            
+            scalar Di = kB * T[celli] * Cci / (3.0 * pi * mug[celli] * dmi);
+            scalar Dj = kB * T[celli] * Ccj / (3.0 * pi * mug[celli] * dmj);
+            
+            // Thermal speeds of fractals
+            
+            scalar vpi = sqrt(8.0 * kB * T[celli] / (pi * mi));
+            scalar vpj = sqrt(8.0 * kB * T[celli] / (pi * mj));
+            
+            scalar va = mug[celli]/rhog[celli];  // kinematic viscosity of fluid
+            
+            // Transition parameters (using dmi/dmj)
+            
+            // fractal mean free path
+
+            scalar lambdapi = 8.0 * Di / (pi * vpi);
+            scalar lambdapj = 8.0 * Dj / (pi * vpj);
+            
+            // mean distance calculation 
+            
+            scalar deltai = (pow(dmi + lambdapi, 3) - pow(sqr(dmi) + sqr(lambdapi), 1.5)) / (3.0 * dmi * lambdapi) - dmi;
+            scalar deltaj = (pow(dmj + lambdapj, 3) - pow(sqr(dmj) + sqr(lambdapj), 1.5)) / (3.0 * dmj * lambdapj) - dmj;
+            
+            // Denominator terms (using dfi/dfj for collision cross-section)
+
+            scalar dterm1 = (dfi + dfj) / (dfi + dfj + 2.0 * sqrt(sqr(deltai) + sqr(deltaj))); // first term in denominator
+            scalar dterm2 = 8.0 * (Di + Dj) / ((dfi + dfj) * sqrt(sqr(vpi) + sqr(vpj))); // second term in denominator
+            
+            // Final Fuchs kernel for fractals
+            
+            scalar beta_Fuchs = 2.0 * pi * (Di + Dj) * (dfi + dfj) / (dterm1 + dterm2); // KB term
+            
+            scalar beta = beta_Fuchs; // Default: pure Brownian Fuchs kernel (for laminar)
+            
+            scalar beta_turb_inertial = 0.0;
+            scalar beta_turb_shear = 0.0;
+            
+            if (turbulenceOn)
+            {
+                const scalar epsilonVal = epsilon->internalField()[celli];
+                
+                
+                
+                if (epsilonVal > SMALL)
+                {
+                    
+                    scalar vfi = (rhol[celli] - rhog[celli]) * sqr(dmi) *gMag* Cci / (18.0 * mug[celli]); // Terminal fall speed
+                    scalar vfj = (rhol[celli] - rhog[celli]) * sqr(dmj) *gMag* Ccj / (18.0 * mug[celli]); // Terminal fall speed
+
+                    beta_turb_inertial = pi * pow(epsilonVal, 0.75) * sqr(dfi + dfj) * fabs(vfi - vfj) / (4.0 *gMag* pow(va, 0.25));
+                    
+                    beta_turb_shear = 0.125 * sqrt(8.0 * pi * epsilonVal / (15.0 * va)) * pow(dfi + dfj, 3);
+                    
+                    //total beta
+                    
+                    beta += beta_turb_inertial + beta_turb_shear;
+                }
+            }
+/*                   
+                   betaOutput 
+    			<< celli << " "
+   			<< i << " "
+    			<< j << " "
+    			<< volEqDiam[i] << " "
+    			<< volEqDiam[j] << " "
+    			<< beta_Fuchs << " "
+    			<< beta_turb_inertial << " "
+    			<< beta_turb_shear << " "
+    			<< beta << endl;
+
+*/
                     scalar& Mi = sections[i].M().field()[celli];
                     scalar& Mj = sections[j].M().field()[celli];
 
@@ -556,7 +851,7 @@ void Foam::aerosolModels::fixedSectional::solveInternal()
                     interp.addToM(pair.idata(), pair.s(), f, celli);
                 }
             }
-        }
+        
     }
 
     system_->rescale();
@@ -573,6 +868,22 @@ Foam::aerosolModels::fixedSectional::fixedSectional
 )
 :
     aerosolModel(modelType, mesh, aerosolProperties),
+    
+    g_
+    (
+        uniformDimensionedVectorField
+        (
+            IOobject
+            (
+                "g",
+                mesh.time().constant(),
+                mesh,
+                IOobject::READ_IF_PRESENT,
+                IOobject::NO_WRITE
+            ),
+            dimensionedVector("g", dimVelocity/dimTime, vector::zero)
+        ).value()
+    ),
     system_(),
     J_
     (
@@ -589,6 +900,8 @@ Foam::aerosolModels::fixedSectional::fixedSectional
     ),
     I_(thermo_.activeSpecies().size()),
     rescale_(coeffs_.lookupOrDefault<Switch>("rescale", true))
+    
+
 {
     system_.reset(new fixedSectionalSystem(*this, coeffs()));
 

@@ -22,6 +22,7 @@ License
 #include "aerosolModel.H"
 #include "rhoAerosolPhaseThermo.H"
 #include "gaussConvectionScheme.H"
+#include "constants.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
@@ -89,8 +90,142 @@ const volVectorField& fullStokes::V
     const surfaceScalarField& phi = aerosol_.phi();
 
     const volScalarField& mug = thermo.thermoCont().mu();
+    
+    //  Calculate slip correction factor    
 
-    const volScalarField tau(Foam::sqr(d)*rhol/(18.0*mug));
+    const rhoAerosolPhaseThermo& thermoCont = aerosol_.thermo().thermoCont();
+    const basicSpecieMixture& compCont = thermoCont.composition();
+    const label j = thermoCont.species()[aerosol_.thermo().inertSpecie()];
+    
+    const volScalarField& p = aerosol_.thermo().p();
+    const volScalarField& T = thermoCont.T();
+    
+    const scalar pi = constant::mathematical::pi;
+    const scalar k = constant::physicoChemical::k.value();
+    const scalar NA = constant::physicoChemical::NA.value();
+
+
+    const scalar W = compCont.W(j);
+    const scalar mg = 0.001 * W / NA;
+
+
+
+
+// Calculate mean free path
+
+
+volScalarField lambda
+(
+    IOobject
+    (
+    "lambda",
+    mesh.time().timeName(),
+    mesh,
+    IOobject::NO_READ,
+    IOobject::NO_WRITE
+    ),
+    Foam::sqrt(pi*k*T/(2.0*mg)) *(mug/p)
+);
+
+lambda.dimensions().reset(dimLength);
+
+
+// Get dMin and create dimensioned scalar
+	const scalar dMinValue = aerosol_.dMin();
+	const dimensionedScalar dMin("dMin", dimLength, dMinValue);
+
+
+
+// Calculate Knudsen number
+
+
+volScalarField Kn
+(
+    IOobject
+    (
+        "Kn",
+        mesh.time().timeName(),
+        mesh
+    ),
+   ( 2.0*lambda)/(max(d, dMin) + dimensionedScalar("small", dimLength, SMALL))
+);
+
+// Optional: reset dimensions (if needed for safety/debugging)
+Kn.dimensions().reset(dimless);
+
+// Calculate Cunningham slip correction factor with safeguards
+
+
+
+volScalarField C
+(
+    IOobject
+    (
+        "C",
+        mesh.time().timeName(),
+        mesh
+    ),
+    1.0 + (Kn/2.0) * (2.34 + 1.05 * exp(-0.39 / ((Kn/2.0) + dimensionedScalar("small", dimless, SMALL))))
+);
+
+// Optional: reset dimensions to ensure it's dimensionless
+C.dimensions().reset(dimless);
+
+// Calculate relaxation time with additional safeguards
+
+volScalarField tau
+(
+    IOobject
+    (
+        "tau",
+        mesh.time().timeName(),
+        mesh
+    ),
+    mesh,
+    dimensionedScalar("tau", dimTime, 0.0)
+);
+
+
+        const scalar monoRad = aerosol_.monoRad();
+        const scalar pfFm    = aerosol_.dysfPfFm();
+        const scalar expFm   = aerosol_.dysfExpFm();
+        const scalar pfTr    = aerosol_.dysfPfTr();
+        const scalar expTr   = aerosol_.dysfExpTr();
+        const scalar pfCont  = aerosol_.dysfPfCont();
+        const scalar expCont = aerosol_.dysfExpCont();
+
+        
+        forAll(d, celli)
+        {
+            const scalar dc = max(d[celli], SMALL);
+            const scalar mu = max(mug[celli], SMALL);
+            const scalar c  = max(C[celli], SMALL);
+            const scalar KnVal = Kn[celli];  // Use Kn instead of dc
+
+            scalar sf = 1.0;
+
+            if (KnVal < 0.1)
+                // continuum regime
+                    sf = pfCont * pow(0.5 * dc / monoRad, expCont);
+                
+            else if (KnVal > 10.0)
+                // Free molecular regime
+                   sf = pfFm * pow(0.5 * dc / monoRad, expFm);
+            else
+               // Transition regime
+                sf = pfTr * pow(0.5 * dc / monoRad, expTr);
+
+            sf = max(sf, SMALL);
+            tau[celli] = sqr(dc) * rhol[celli] * c / (18.0 * mu * sf);
+        }
+		
+
+	// Additional check for very small tau values
+	tau = max(tau, dimensionedScalar("minTau", dimTime, SMALL));
+
+	Info << "tau min/max: " << min(tau).value() << " " << max(tau).value() << endl;
+
+
     const volVectorField G((rhol-rhog)/rhol*g_);
 
     const surfaceScalarField phiU(phi/linearInterpolate(rho));

@@ -1,0 +1,37 @@
+FoamFile
+{
+    version     2.0;
+    format      ascii;
+    class       dictionary;
+    location    "constant";
+    object      thermophysicalProperties;
+}
+
+activeSpecies
+(
+    Water
+    NaCl
+);
+
+inactiveSpecies
+(
+    Air
+    
+    
+);
+
+inertSpecie Air;
+
+phaseMixing
+{
+    viscosity       continuousPhase;
+    conductivity    mass;
+    heatCapacity    mass;
+}
+
+activityCoeff
+{
+   type    constant;
+   Water   1.0;
+   NaCl    0;
+}

@@ -51,6 +51,9 @@ class fixedSectional
     public aerosolModel
 {
     //- Private Member Functions
+    
+        //- Gravitational accelleration vector
+        vector g_;
 
         //- Disallow copy construct
         fixedSectional(const fixedSectional&);

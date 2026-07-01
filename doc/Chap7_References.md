@@ -27,6 +27,7 @@ These studies are published by the authors and contributors of AeroSolved, and a
 * Winkelmann, C., Kuczaj, A.K., Nordlund, M. & Geurts, B. J. (2018). Simulation of aerosol formation due to rapid cooling of multispecies vapors. _Journal of Engineering Mathematics_, 108, 171-196. 
 * Winkelmann, C. , Nordlund, M. , Kuczaj, A. K., Stolz, S. & Geurts, B. (2014)., Efficient second‐order time integration for single‐species aerosol formation and evolution. _Int. J. for Numerical Methods in Fluids_, 74: 313-334.
 * Zacchei, F., Lucci, F., Frederix, E. M. A., Tajfirooz, S., & Kuczaj, A. (2025).  Aerosolved: Wall Boundary Conditions for Liquid Multispecies Aerosol Deposition at Transient and High-Humidity Flows, _Journal of Aerosol Science_. 
+* Riya Dey, Jayant Krishan, S Anand, Francesco Lucci (2026).  Aerosolved v3.1: A CFPD-based framework for morphology-dependent aerosol transport and population dynamics. (Under preparation) 
 
 ## List of other publications
 
@@ -51,3 +52,5 @@ These studies are key references upon which AeroSolved is based or validated:
 * Whitby, E. R., & McMurry, P. H. (1997). Modal aerosol dynamics modeling. _Aerosol Science and Technology_, 27(6), 673-688.
 * Wilck, M., & Stratmann, F. (1997). A 2-D multicomponent modal aerosol model and its application to laminar flow reactors. _Journal of Aerosol Science_, 28(6), 959-972.
 * Zhang, Z., Kleinstreuer, C., & Hyun, S. (2012). Size-change and deposition of conventional and composite cigarette smoke particles during inhalation in a subject-specific airway model. _Journal of Aerosol Science_, 46, 34-52.
+* Jayant Krishan, S. Anand, A. Singh, T. Thajudeen, Jyoti Seth, Y.S. Mayya (2025). Effect of non-spherical morphology on aerosol evolution in reactor containment using size-dependent dynamic shape factors. Nuclear Engineering and Design. Volume 440, 114136.
+* Jacobson M Z (2005). Fundamentals of Atmospheric Modelling. Cambridge University Press.

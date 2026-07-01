@@ -41,6 +41,19 @@ private:
 
         //- Switch to turn on the Kelvin effect (defaults to false)
         Switch KelvinEffect_;
+        
+        //- Switch to turn on the Fuchs correction (defaults to false)
+        Switch FuchsCorrection_;
+        
+        // - Droplet temperature correction, Refer: Hinds 1999
+        Switch DropletTemperatureCorrection_;
+        
+        // - Define saturation ratio or relative humidity
+        scalar SR_;
+        
+        // Define parameters for solute mode
+        word   soluteName_;
+        scalar soluteLimit_;
 
     // Private member functions
 

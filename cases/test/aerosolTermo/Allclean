@@ -1,8 +1,0 @@
-#!/bin/bash
-
-cd ${0%/*} || exit 1
-
-. $WM_PROJECT_DIR/bin/tools/CleanFunctions
-
-cleanCase
-rm -rf 0
