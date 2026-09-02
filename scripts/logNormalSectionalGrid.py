@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/env python3
 
 # Script which plots a log-normal size distribution given a sectional grid
 # This script is useful to find appropriate yMin and yMax
@@ -74,10 +74,10 @@ d32 = CMD*np.exp(0.5*(3.0+2.0)*np.square(np.log(sigmag)))
 d53 = CMD*np.exp(0.5*(5.0+3.0)*np.square(np.log(sigmag)))
 
 plt.plot(CMD, logNormal(CMD, sigmag, CMD), 'o', label='CMD')
-plt.plot(countMeanDiameter, logNormal(countMeanDiameter, sigmag, CMD), 'o', label='$\overline{d}$')
+plt.plot(countMeanDiameter, logNormal(countMeanDiameter, sigmag, CMD), 'o', label=r'$\overline{d}$')
 plt.plot(d32, logNormal(d32, sigmag, CMD), 'o', label='$d_{3,2}$')
 plt.plot(massMedianDiameter, logNormal(massMedianDiameter, sigmag, CMD), 'o', label='MMD')
-plt.plot(massMeanDiameter, logNormal(massMeanDiameter, sigmag, CMD), 'o', label='$d_{\mathrm{mm}}$')
+plt.plot(massMeanDiameter, logNormal(massMeanDiameter, sigmag, CMD), 'o', label=r'$d_{\mathrm{mm}}$')
 plt.plot(d53, logNormal(d53, sigmag, CMD), 'o', label='$d_{5,3}$')
 
 print('Count median diameter =', CMD)

@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/env python3
 
 # Script to compute mass fractions of a vapor mixture at saturation S with inert
 # species molar composition g, held over a hypothetical pool with liquid molar

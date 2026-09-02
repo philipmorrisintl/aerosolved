@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/env python3
 
 # Script to compute variables for the CAG case
 
@@ -69,7 +69,7 @@ ReVaporJet = D*U/nu
 
 # Compute estimate of outlet temperature and densities
 
-massFlow = massFlowAirHot + massFlowAirHot + massFlowVapor
+massFlow = massFlowAirHot + massFlowAirCold + massFlowVapor
 
 TMix = (massFlowAirCold*TCold + massFlowAirHot*THot + massFlowVapor*THot)/massFlow
 

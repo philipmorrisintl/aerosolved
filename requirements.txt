@@ -1,0 +1,16 @@
+# Python dependencies for the AeroSolved post-processing / setup scripts.
+# These are used by the *.py scripts in scripts/ and by cases/*/plot.py.
+#
+# Install into a dedicated virtual environment (recommended) so AeroSolved does
+# not interfere with, or get interfered with by, the system Python:
+#
+#   python3 -m venv .venv-aerosolved
+#   source .venv-aerosolved/bin/activate          # Linux/macOS
+#   pip install -r requirements.txt
+#
+# Note: the Allrun scripts and AeroSolvedRunFunctions check for numpy/matplotlib
+# availability and warn if they are missing.
+
+numpy>=1.25
+scipy>=1.9
+matplotlib>=3.5

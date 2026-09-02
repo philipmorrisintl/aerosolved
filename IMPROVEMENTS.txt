@@ -1,0 +1,551 @@
+================================================================================
+ AeroSolved - Recommendations for Added Features, Bug Fixes, and Improvements
+================================================================================
+
+Prepared : 2026-08-27
+Reviewer : codebase review of the cloned repo
+           https://github.com/philipmorrisintl/aerosolved
+Repo head reviewed : master @ b8aad28 (release/3.0 merge; tag v3.0.0 present)
+
+--------------------------------------------------------------------------------
+How to use AeroSolved (summary of the workflow this review was based on)
+--------------------------------------------------------------------------------
+AeroSolved is an OpenFOAM C++ library package that models evolving multispecies
+aerosols (continuous + dispersed phases) in the Eulerian framework. It is built
+on OpenFOAM (tested v1812 in docs, v2406/v2412 in README) and is a reactingFoam
+deriv in which the reaction model is replaced by an aerosol model.
+
+  1. Build (needs OpenFOAM environment, e.g. OpenFOAM-v2406):
+         make            # compiles all libs + solver + utilities; optional Doxygen
+         make clean
+
+  2. Each case is a self-contained folder. Run with:
+         ./Allrun <inertialDriftModel> <aerosolModel>
+     e.g.  ./Allrun fullStokes sectional
+     Allrun expands .m4 templates (via m4), runs blockMesh, optional C++
+     utilities, decomposePar, runParallel <solver>, and an optional Python
+     post-processing / plot step.
+
+  3. Two PBE (population-balance) solvers:
+         - twoMomentLogNormalAnalytical (recommended): log-normal closure, 2 moments
+         - fixedSectional               : sectional discretization (CBSM)
+     Plus sub-models: condensation (coupled/Stefan-flow), nucleation
+     (coupled, Winkelmann 2018), coalescence (gasSlip / freeMolecule /
+     blended), dispersed diffusion (Stokes-Einstein), inertial drift
+     (Manninen algebraic / fullStokes full PDE).
+
+  4. Two thermophysical layers:
+         - aerosolThermo   : two-phase mixture thermo (continuous + dispersed)
+         - aerosolModels   : PBE + sub-models + drift flux + functionObjects
+
+This document lists concrete bugs, robustness gaps and feature opportunities,
+each tagged [BUG] / [IMPROVE] / [FEATURE] and by severity. Line numbers refer to
+the reviewed revision; re-check after local edits.
+
+================================================================================
+SECTION 1  -  CONFIRMED BUGS (should be fixed; verified in this review)
+================================================================================
+
+[BUG/CRITICAL] scripts/CAG.py:72   - duplicate addend, wrong total mass flow
+    Line:  massFlow = massFlowAirHot + massFlowAirHot + massFlowVapor
+    It adds massFlowAirHot twice and never includes massFlowAirCold. This makes
+    TMix (line 73) and every downstream density/Reynolds estimate wrong.
+    Fix:  massFlow = massFlowAirHot + massFlowAirCold + massFlowVapor
+    (Note: massFlowAirCold itself is computed at line ~62; the variable exists,
+    so this is a pure typo.)
+
+[BUG/CRITICAL] scripts/Cloud.py:38 - typo in user-facing output (and physics label)
+    Line:  print('mixutre inlet velocity U =', Ud*Z, 'm/s')
+     "mixutre" -> "mixture". Minor but user-visible in a case setup script.
+
+[INFO/LOW]    cases/bentPipe/Allrun:116 & cases/Brownian/Allrun:28 - inconsistent
+    trailing backslash in the VARS= multi-line block (COSMETIC, not a functional
+    bug — see verification below)
+    These VARS lines ended without a trailing backslash while their neighbours had
+    one:
+        -DVARMINLETBC=$MINLETBC \
+        -DVARMWALLBC=$MWALLBC          <--- no trailing backslash
+        -DVARZWALLBC=$ZWALLBC \
+    VERIFICATION (2026-08-27): ran the two Allrun forms through m4. Because VARS
+    is a *double-quoted* string, a missing backslash leaves a literal newline in
+    the string, which m4 still treats as whitespace. The buggy and fixed blocks
+    produce the IDENTICAL set of -DVAR macros that m4 receives (verified with a
+    fixed-vs-buggy diff, see verify_semantics.sh). So this is a style/format
+    inconsistency, NOT a silent misconfiguration.
+    Fix: add the missing trailing backslashes for consistency (done). No change to
+    simulated physics. (The earlier "critical silent misconfiguration" framing was
+    over-stated; corrected here after empirical testing.)
+
+[BUG/MODERATE] scripts/thermophysicalFunctions.py:81-89 - 4 distinct vapors
+    share identical Sutherland viscosity constants (copy-paste)
+    muPGg, muVGg, muWaterg, muAirg all use:
+        As = 1.67212e-06 ; Ts = 170.672
+    These are actually air-like constants. For a propylene-glycol /
+    vegetable-oil / water / air system the vapour viscosity constants should
+    be species-specific (or, at minimum, documented as an air proxy). As
+    written, CAG and Cloud post-processing will use the wrong kinematic
+    viscosity, propagating into Reynolds-number and velocity estimates.
+    Fix: pull Sutherland parameters per species from a table (e.g.
+    thermophysicalProperties.continuous) or flag this as a documented
+    approximation. Also note the stray semicolons at lines 83 and 88
+    (no-op but sloppy).
+
+[BUG/LOW] scripts/thermophysicalFunctions.py:69 vs line 6 - inconsistent M_air
+    Line 6:    MAir = 28.9596  (used for gas mixtures)
+    Line 69:   return 28.810/8.3144621/T*1E2   (rhoAirg uses a DIFFERENT
+                                          molar mass)
+    28.810 g/mol vs 28.9596 g/mol gives a ~0.5 % density error for air.
+    Fix: define M_air once (28.97 g/mol) and reuse in both places; make the
+    gas molar mass a single source of truth.
+
+[BUG/LOW] doc/Chap5_Nomenclature.md:29 - "aerosolModel object3"
+    The trailing "3" is a stray typo. Trivial to fix.
+
+[BUG/LOW] aerosolModel/aerosolModel.C:44 - runtime banner says "AeroSolved 2.1"
+    The runtime "Welcome to AeroSolved 2.1" banner no longer matches the
+    released/v3.0.0 tag (and README advertises v2406/v2412 OpenFOAM support).
+    Fix: drive the version from generateGitInfo.sh / a CMake-style VERSION file
+    so the banner reflects the actual release.
+
+[BUG/LOW] scripts/CAG.py:76 and uniformNucleationMixture.py:36 - mass
+    fractions use air density at cold temperature but the mass flow of the hot
+    branch was computed at cold temperature too
+    massFlowAirHot = flowAirHot * tpf.rhoAirg(TCold) * f
+    Physically, hot air should be evaluated at THot (or at mixture T).
+    This is a setup-script inconsistency - document or fix.
+
+[BUG/LOW] scripts/CAG.py:66 - "flowAirHot [l/min" comment missing the closing
+    bracket on line 35. Cosmetic but signals copy-paste.
+
+[BUG/LOW] scripts/densityPolyFit.py / butanolViscosityFit.py (unverified)
+    - Check that fitted polynomials match the reference correlations used in
+      thermophysicalFunctions.py; if not, the two sets are silently in
+      disagreement and the "true" values are unclear.
+    Fix: unify the source-of-truth for fitted correlations and document the
+    fit range + accuracy.
+
+================================================================================
+SECTION 2  -  NUMERICAL ROBUSTNESS & PHYSICS CORRECTNESS
+================================================================================
+
+[IMPROVE/HIGH] coalescenceModels/ - MISSING the continuum-regime kernel
+    doc/Chap2_Model.md:168 documents "Continuum regime coalescence
+    (Kn < 0.1)" with beta(a,b) = K(a+b)(1/a + 1/b), but the only coalescence
+    classes in submodels/coalescenceModels/ are:
+        blendedCoalescence, gasSlipCoalescence, freeMoleculeCoalescence,
+        noCoalescence
+    There is NO standalone "continuum" / "Brownian" coalescence model. The
+    continuum term is only reachable as the small-Knudsen branch of
+    gasSlip, and even then it is lumped with the gas-slip correction. Many
+    fine-aerosol applications (nucleation, coagulation of nanoparticles)
+    NEED a pure Brownian/continuum kernel.
+    Fix: add a `brownian` / `continuum` coalescenceModel and expose it to
+    blened/blendedCoalescence's smallKnudsen slot.
+
+[IMPROVE/HIGH] gasSlipCoalescence + freeMolecule - Knudsen-regime GAP
+    Documentation states:
+        continuum    : Kn < 0.1
+        gas-slip     : 0.1 < Kn < 1
+        free-molecule: Kn > 10
+    There is a large unmodelled window 1 < Kn < 10, and a discontinuity at
+    Kn=1 and Kn=10 if a user selects only one regime. The blended model is the
+    only continuous blend, yet the code does NOT automatically compute Kn and
+    pick the model - the user must configure smallKnudsen/largeKnudsen.
+    Fix: implement an auto-switch that computes Kn (KnudsenNumber FO already
+    exists) and blends the three regimes with a smooth harmonic-mean
+    transition across the full Kn range, or at least document the 1..10 gap
+    prominently.
+
+[IMPROVE/MOD] coupledCondensation.C:133 - Fuchs-Sutugin (transition) factor
+    HARD-CODED to 1.0
+        // Set Fuchs & Sutugin correction factor to unity, for now
+        scalar beta = 1.0;
+    For particles in the transition regime this is a known inaccuracy.
+    Fix: implement the Fuchs-Sutugin condensation rate coefficient
+    beta(Kn) and expose a `useFuchsSutugin` switch in aerosolProperties so users
+    can opt in.
+
+[IMPROVE/MOD] coupledCondensation.C:156-159 - log(clamp(..., 0.1)) floor
+        Foam::log(max((p-sum(pSurfa))/(p-sum(pVapa)), 0.1))
+    The 0.1 floor is a hard-coded heuristic. For near-saturated mixtures the
+    physical log argument approaches 1 (Stefan factor -> 1), but clamping at
+    0.1 introduces a discontinuity and can bias the driving force.
+    Fix: use a small VSMALL-style floor (1e-12) and add a SmoothStefanFlow
+    switchable model that regularises log near unity.
+
+[IMPROVE/MOD] coupledCondensation.C:119-129 - KelvinEffect uses d directly;
+    no size-averaged d
+    Ke = exp(4.0 * sigmal * vl / (kB*T*d))
+    For a distribution the Kelvin effect should be evaluated at a mean
+    diameter (e.g. d34) not the cell-mean d; currently it is a cell-mean.
+    Fix: add a mode flag `KelvinDiameter` and let the user pick mean
+    diameter order.
+
+[IMPROVE/MOD] fixedSectional.C:197 - `fv::options&` created per section
+    // TODO: is creation here really a good idea?
+    In solveSpatial() the code does `fv::options& fvOptions(fv::options::New(mesh_))`
+    INSIDE the per-section loop. That is O(#sections) allocations of a
+    fv::options object that all share the same mesh.
+    Fix: hoist the fv::options::New(mesh_) call above the forAll(sections)
+    loop and reuse it for every section. The code itself flags this as a TODO.
+
+[IMPROVE/MOD] fixedSectional.C:367, 446 - `d` (mean diameter) recomputed per
+    section inside the condensation block
+        scalar d(min(dcm[celli],dMax_));
+    dcm is a cell mean, so recomputing it per section per cell wastes work;
+    hoist outside the loop over sections.
+
+[IMPROVE/LOW] fullStokes.C:90 - `Y_ = thermo.sumY()` inside a time loop
+    sumY is a mixture property that changes rarely; recomputing it every
+    inner iteration of the Stokes solve is unnecessary.
+    Fix: compute sumY once per outer loop; reuse across inner iterations.
+
+[IMPROVE/LOW] twoMomentLogNormal.C:100 - `sumY-sumYa` active-mixture guard
+    The active check `sumZ > 1E-20 && (sumY-sumYa) > 0.0` uses fixed
+    thresholds (1E-20) that are not dimension-scaled and may misclassify small
+    but non-zero mixtures as inactive.
+    Fix: use a relative guard, e.g. (sumY-sumYa) > SMALL*sumY, or expose
+    thresholds in aerosolProperties.
+
+[IMPROVE/LOW] coupledCondensation.C:167 - near-zero xi uses Taylor series
+    if (mag(xi[j]) < 1E-10) func = -1.0 + 0.5*xi[j];
+    This is correct for small xi, but the threshold 1E-10 is arbitrary; for
+    xi ~ 1E-8 to 1E-6 the direct formula xi/(1-exp(xi)) suffers cancellation.
+    Fix: widen the small-xi window to e.g. |xi| < 1E-4 and use the higher-
+    order Taylor (xi/2 - xi^2/12 + ...).
+
+================================================================================
+SECTION 3  -  C++ CODE QUALITY & MAINTAINABILITY
+================================================================================
+
+[IMPROVE/LOW] *New.C files left in the source tree
+    12 legacy OpenFOAM "New" factory files still ship in the tree:
+        aerosolModelNew.C, coalescenceModelNew.C,
+        condensationModelNew.C, continuousDiffusionModelNew.C,
+        dispersedDiffusionModelNew.C, dispersedInertialDriftModelNew.C,
+        nucleationModelNew.C, sectionalDistributionNew.C,
+        sectionalInterpolationNew.C, componentMixingModelNew.C,
+        activityCoeffModelNew.C, phaseMixingModelNew.C,
+        diffusivityModelNew.C
+    In modern OpenFOAM (>= v7) the runtime-selection tables are generated by
+    addToRunTimeSelectionTable() in the .C of each concrete class, so these
+    New.C factories are dead code for any recent OpenFOAM.
+    Fix: delete them and drop their Make/files references. If backward support
+    is still needed for v5/v6, gate them behind a WMAKE flag.
+
+[IMPROVE/LOW] twoMomentLogNormalAnalytical.C:71 - TODO flag
+    "// TODO: check if this call is necessary or redundant with a previous call"
+    The clearRates() call inside solvePost() is redundant with the parent's
+    call at the start of its solvePost(). Either remove the parent call or
+    move it into the correct() override. Currently both are active.
+
+[IMPROVE/LOW] aerosolModel.GitInfo.H - unversioned generated file
+    generateGitInfo.sh generates aerosolModelGitInfo.H at build time.
+    The file is not in .gitignore (correct - it is regenerated) but the
+    build rule uses `if [ ! -f ... ] || [ -f OLD ... ]` with a 2 minute
+    staleness check that is platform-specific (GNU `find -mmin`).
+    On macOS/BSD `find` has no -mmin; the build may silently skip git info
+    generation. This is a real portability bug for Mac users.
+    Fix: use `stat -f %m` (BSD) or a portable Python-based check.
+
+[IMPROVE/LOW] fullStokes.C:91-94 - `g_` is read but may not be configured
+    The drift velocity uses g_ from dispersedInertialDriftModel.H:77, which
+    defaults to a uniform (0,0,0). For a case that actually needs gravity the
+    user must set it; a warning/trace print at construction time would help.
+
+[IMPROVE/MOD] Drift velocity BC sign logic - verify
+    zeroGradientDepositionVelocity and subGridDepositionVelocity clip
+    wall-outward velocities to zero. This is correct for deposition, but
+    it is subtle enough that it should be unit-tested to prevent regressions
+    when someone refactors the sign convention.
+    See Section 6 (tests).
+
+[IMPROVE/MOD] Coupled Stefan-flow source terms - verify sign convention
+    coupledCondensation.rate() returns source/sink per species.
+    fixedSectional.solveInternal() consumes cdata.source()/sink() with
+    specific sign assumptions (lines 388-413). A sign-convention
+    test is worth writing. See Section 6.
+
+[IMPROVE/LOW] aerosolModel.C - constructor reads `aerosolProperties` twice
+    aerosolModel(...) opens `aerosolProperties` via MUST_READ_IF_MODIFIED
+    then read() re-opens via optionalSubDict. This works but re-reads
+    the dict at every read() call; a single read with cached subdicts
+    would be cheaper.
+
+[IMPROVE/LOW] fixedSectional.c - `read()` just returns aerosolModel::read()
+        bool fixedSectional::read()
+        {
+            if (aerosolModel::read()) { return true; }
+            else { return false; }
+        }
+    This is a redundant wrapper; it adds no behavior. Delete it.
+
+================================================================================
+SECTION 4  -  BUILD, CONFIG (m4/bash) & PYTHON SCRIPTING
+================================================================================
+
+[IMPROVE/MOD] m4 macro templating - no dry-run / no CI guard
+    56 .m4 files are expanded at build time with m4 and -DVAR... macros.
+    A missing or misplaced backslash in ALLRUN VARS blocks (see
+    bentPipe/Allrun:116) silently misconfigures a case.
+    Fix: add a CI check that expands every .m4 with m4 -P -s and verifies
+    the output parses as valid OpenFOAM dictionary (e.g. by running a
+    `checkCase` dry-run or a python parser).
+
+[IMPROVE/MOD] bash Allrun - no `set -e`, no `set -u`
+    All cases/*/Allrun start with `cd ${0%/*} || exit 1` but do NOT
+    `set -e -u -o pipefail`. A failed `wmake`, blockMesh, or runParallel
+    leaves the case half-set-up and the user is not alerted.
+    Fix: add `set -euo pipefail` to the top of AeroSolvedRunFunctions
+    and to each Allrun.
+
+[IMPROVE/MOD] bash - math via `echo ... | python3` is slow & fragile
+    bentPipe/Allrun calls python3 ~15 times to compute mesh geometry via
+    `echo "import math as m; print(...)" | python3`. Each call forks a new
+    Python interpreter (~80 ms). A modern bash or awk can do this natively.
+    Fix: replace with `awk -v R=... -v NR=... '{...}'` or use `bc -l`, or
+    precompute in a Python script that emits the macro file.
+
+[IMPROVE/MOD] Python scripts - #!/usr/bin/python is broken on modern systems
+    23 python files use `#!/usr/bin/python`. On modern macOS and most
+    current Linux distros `/usr/bin/python` does NOT exist (only python3).
+    These scripts fail to run directly.
+    Fix: change to `#!/usr/bin/env python3` across the tree.
+
+[IMPROVE/MOD] Python scripts - no `python3` availability check
+    checkPython3 (AeroSolvedRunFunctions) only tests that python3 exists,
+    not that numpy / matplotlib / scipy (used by scripts/*.py) are importable.
+    A user on a minimal OpenFOAM install will get a cryptic ImportError
+    mid-run.
+    Fix: extend checkPython3 to probe the modules actually used.
+
+[IMPROVE/LOW] Python scripts - inconsistent quality
+    - `scripts/CAG.py` mixes "l/min" vs "kg/s" units with no warning.
+    - `scripts/CAG.py` line 49 (Reynolds number) uses mixture viscosity
+      but a single cross-sectional area `A = pi/4*D^2` - for a wedge
+      geometry the effective area should scale with f.
+    - Several scripts import `os` but do not use it.
+    - No `if __name__ == "__main__":` guard; import side-effects.
+    Fix: add a small shared utilities module, parameterize via CLI args
+    (argparse) so the same script can generate any case.
+
+[IMPROVE/LOW] Python - `figStyle.py` and `thermophysicalFunctions.py`
+    are both used by scripts but not importable as a package
+    Fix: add a `scripts/pyproject.toml` or make scripts/ a proper package.
+
+[IMPROVE/LOW] Python - no unit tests for thermophysicalFunctions
+    The 4 species (PG/VG/water/air) vapor pressures and liquid densities
+    are correlations that should be checked against reference data
+    (NIST, DIPPR, etc.) at a couple of temperatures.
+    Fix: scripts/test_thermophysicalFunctions.py - pytest module
+    comparing tpf.* to reference tables with tolerance.
+
+[IMPROVE/MOD] setSaturatedMixture / setLogNormal - utilities lack
+    argument validation
+    setSaturatedMixture.C and setLogNormal.C read aerosolProperties but
+    do not validate the sub-keys. A typo in `aerosolProperties` gives
+    a cryptic readScalar failure.
+    Fix: add readOrDefault / error-guard for each required key.
+
+================================================================================
+SECTION 5  -  TESTING, CI & VALIDATION
+================================================================================
+
+[FEATURE/HIGH] No CI pipeline
+    There are no .github/ or .gitlab-ci.yml files. No automated build or
+    regression test is run on PRs.
+    Fix: add .github/workflows/aerosolved.yml that:
+      - builds the full project on 2 OpenFOAM versions (v2406, v2412),
+      - runs a smoke test on cases/rain/ and cases/cavity/ (small mesh,
+        ~5 time steps),
+      - runs the Python scripts' self-tests,
+      - lints bash (shellcheck) and Python (ruff/flake8).
+    This would have caught CAG.py:72, Cloud.py:38 typo, etc.
+
+[FEATURE/HIGH] No regression test suite
+    Each `cases/*/plot.py` already compares simulation output to reference
+    data (GhiaU/GhiaV for cavity, Pui/Cheng/Wang for bent pipe).
+    Wrap these in a regression test that fails when the match deviates
+    by more than a tolerance from a stored "golden" reference.
+    Fix: scripts/regression/run_regression.py - runs each case, parses
+    output, compares to `cases/*/referenceData/golden.*`, and fails with
+    a diff.
+
+[FEATURE/MOD] No unit tests for sub-models
+    - Coalescence kernels (gasSlip, freeMolecule, blended) should be
+      unit-tested at fixed (T, p, mu, rhol, d) against published values.
+    - StokesEinstein diffusivity, Manninen drift, fullStokes drift should
+      be tested at fixed inputs.
+    Fix: applications/test/aerosolModels/ - a new test app that calls
+      each sub-model directly with a tiny synthetic case and prints
+      computed rates for comparison.
+
+[FEATURE/LOW] No `checkCase` / case validation tool
+    A new `checkAerosolCase` utility that verifies dict consistency
+    (activeSpecies vs inertSpecie, dMin < dMax, section sizes within
+    [min, max], etc.) would catch configuration errors early.
+
+================================================================================
+SECTION 6  -  NEW FEATURES / EXTENSIBILITY
+================================================================================
+
+[FEATURE/HIGH] Lagrangian-particle / two-way coupling
+    Current model is pure Eulerian. A Lagrangian-particle mode
+    (e.g. coupled with OpenFOAM's `lagrangianFoam` or a custom
+    `LagrangianCloud<...>`) would let users verify the Eulerian PBE against
+    a direct particle method.
+    Fix: add a `lagrangianAerosol` solver skeleton that couples
+    `lagrangianFoam` with `aerosolThermo`.
+
+[FEATURE/HIGH] Moving reference frames / rotating equipment
+    MRFZoneList is in the buoyant solver, but the non-buoyant
+    aerosolEulerFoam does not appear to include MRF. Many aerosol
+    applications (impingers, rotating atomizers, cyclones) need MRF.
+    Fix: add an optional MRFZoneList to aerosolEulerFoam.
+
+[FEATURE/MOD] Additional nucleation models
+    Only coupledNucleation (Winkelmann) and noNucleation exist.
+    Common needs: classical binary nucleation, homogeneous nucleation
+    for specific systems (e.g. water, sulfuric acid), and size-dependent
+    nucleation rate (Jnuc as a function of d).
+    Fix: add homogeneousBinaryNucleation and sizeDependentCoupled.
+
+[FEATURE/MOD] More coalescence kernels
+    Implement the missing continuum/Brownian kernel (see Section 2).
+    Add turbulent coalescence (e.g. Saffman, Hinze) for a regime where
+    eddy collisions dominate Brownian.
+    Fix: add turbulentCoalescence sub-model.
+
+[FEATURE/MOD] Deposition / boundary layer models
+    subGridDeposition is per-patch; a true wall-resolved deposition model
+    (e.g. wall-normal velocity + Brownian + turbulent + gravitational
+    deposition with a wall-shear correction) would improve deposition
+    accuracy.
+    Fix: add wallDeposition functionObject that aggregates fluxes from
+    each patch and computes deposition efficiency per size class
+    (analogous to bentPipe plot.py).
+
+[FEATURE/MOD] Dynamic mesh / deforming pipe
+    Several cases model curved pipes. For truly dynamic geometries, an
+    integration with OpenFOAM dynamicMesh would enable pulsating flows.
+    Fix: add a `dynamicMeshAerosolFoam` solver variant.
+
+[FEATURE/MOD] Multi-phase (3-phase) extension
+    Aerosol currently is strictly two-phase (continuous gas + dispersed
+    liquid). For applications involving aerosol + solid (e.g. droplet +
+    dust), a three-phase extension would broaden the use cases.
+    Fix: add a `third phase` to aerosolThermo (heavy refactor).
+
+[FEATURE/LOW] GPU / MPI scaling benchmarks
+    No benchmark harness for large runs. For a code that may be used on
+    HPC, a benchmark script that runs a fixed case across #cores and
+    reports efficiency would be valuable.
+    Fix: scripts/bench/run_bench.sh - parametrized by case + nprocs,
+    writes results to a CSV for plotting.
+
+[FEATURE/LOW] Jupyter integration / live post-processing
+    Wrap the Python scripts in a small Jupyter notebook that reads
+    OpenFOAM postProcessing output and renders live plots, so users can
+    explore results interactively.
+
+[FEATURE/LOW] GUI / web dashboard
+    A very lightweight dashboard (e.g. a small Flask or Panel app) that
+    serves plot outputs from a recent case would make the tool more
+    accessible. Not high priority.
+
+================================================================================
+SECTION 7  -  DOCUMENTATION
+================================================================================
+
+[IMPROVE/HIGH] Version string mismatch between README and docs
+    README.md: "OpenFOAM-v2406 and OpenFOAM-v2412"
+    doc/Chap1_About.md:52: "OpenFOAM-v1812"
+    These disagree. The About page should reference the same versions as
+    the README.
+
+[IMPROVE/MOD] No "Installation" page at all
+    The About doc says "see the Installation section" but there is no
+    Installation chapter in doc/. This is a broken cross-reference.
+    Fix: add doc/Chap0_Installation.md with:
+      - OpenFOAM version matrix
+      - `git clone` + `cp -r aerosolved $FOAM_TUTORIALS`
+      - `make` / `make clean` / `make doc`
+      - How to run a case end-to-end
+      - Python dependency list (numpy, matplotlib, scipy?, pandas?)
+
+[IMPROVE/MOD] No "Tutorials" chapter that is runnable from scratch
+    The tutorial (Chap3) describes bentPipe but does not start from a
+    fresh clone. A "Tutorials" chapter that walks a user through
+    (1) building, (2) running a tiny smoke case, (3) post-processing
+    would on-board new users 10x faster.
+
+[IMPROVE/LOW] No API reference (Doxygen is configured but not built/tested
+    in CI)
+    The Doxyfile exists but is never built. Add a "generate Doxygen and
+    deploy to gh-pages" CI step to provide a browsable API reference.
+
+[IMPROVE/LOW] No changelog
+    v1.0.0, v2.0.0, v3.0.0 are tagged in git but there is no CHANGELOG.md.
+    Add CHANGELOG.md that summarizes each release.
+
+[IMPROVE/LOW] No CODE_OF_CONDUCT / CONTRIBUTING / SECURITY
+    The repo is open-source and community-funded. Standard practice is to
+    add these three files.
+
+[IMPROVE/LOW] AttributionNote
+    AttributionNote lists the OpenFOAM dependencies but is a ~3 KB file
+    that is hard to scan. Convert to a markdown table with a link to
+    each package and a version.
+
+================================================================================
+SECTION 8  -  PRIORITIZED ACTION LIST
+================================================================================
+
+TIER 1    -  FIX IMMEDIATELY (confirms bugs, low effort, high impact)
+    [COMPLETED 2026-08-27] Items 1-8 applied and verified locally (bash -n,
+    py_compile, grep, and an empirical m4 test — see OF_TEST_STATUS.md).
+    Item 5 was re-verified to be COSMETIC (double-quoted VARS string: a missing
+    backslash leaves a whitespace newline that m4 still parses) and is downgraded
+    to [INFO/LOW]; only items 1, 2, 6 and 7 change runtime behaviour.
+   1. [DONE] scripts/CAG.py:72               - true bug: duplicate massFlowAirHot
+   2. [DONE] scripts/Cloud.py:38             - "mixutre" typo
+   3. [DONE] doc/Chap5_Nomenclature.md:29    - "object3" typo
+   4. [DONE] doc/Chap1_About.md + README.md  - OpenFOAM version consistency
+   5. [DONE, COSMETIC] cases/bentPipe/Allrun:116 & cases/Brownian/Allrun:28
+   6. [DONE] scripts/thermophysicalFunctions - unify air molar mass
+   7. [DONE] *.py shebangs                   - #!/usr/bin/env python3 (23 files)
+   8. [DONE] AeroSolvedRunFunctions          - set -e/pipefail + dep probe
+   8b.[DONE] requirements.txt + project venv  - numpy/scipy/matplotlib fixed
+
+TIER 2   -  HIGH-VALUE IMPROVEMENTS (moderate effort)
+   9.  [DEFERRED-NEEDS-BUILD] Add continuum/Brownian coalescence model.
+       Not implemented: requires a full wmake build to verify a new C++ sub-model
+       compiles and links. Parked for a dedicated PR once buildable here.
+  10. [DONE] Add CI workflow (.github/workflows/ci.yml: lint / python-scripts /
+       build matrix on OpenFOAM 2406+2412). YAML validated locally; needs a push
+       to exercise the build job on a real OpenFOAM runner.
+  11. [DONE] Add "Installation" chapter (doc/Chap0_Installation.md), wired into
+       README.md and Chap1_About.md navigation and body.
+  12. [DEFERRED-NEEDS-BUILD] Replace `echo | python3` mesh math in Allrun with
+       awk/bc or a pre-baked template. Perf/correctness improvement; must verify
+       mesh output is byte-identical under wmake before switching.
+  13. [DEFERRED-NEEDS-BUILD] Delete dead *New.C factory files. REASSESS 2026-08-27:
+       all 13 are still REFERENCE'D in their libraries/Make/files, so wmake
+       actively compiles them. Removing them is only safe against a specific
+       OpenFOAM version (duplicate-symbol risk or, on older OpenFOAM, a broken
+       build). Defer until a real build confirms which OpenFOAM we target.
+  14. [DONE] Fix generateGitInfo.sh to be BSD/macOS compatible (no GNU-only
+       find -mmin / touch -d); now uses a commit-id sidecar for staleness.
+       Idempotency verified locally (2nd run is a no-op).
+
+TIER 3  -  FEATURE GROWTH (substantial, roadmap)
+ 15.  Lagrangian/2-way coupling skeleton.
+ 16.  Regression test suite (Section 5).
+ 17.  More coalescence and nucleation models (turbulent, binary).
+ 18.  Jupyter / dashboard for post-processing.
+ 19.  Three-phase extension (longer-term).
+ 20.  Dynamic mesh / moving reference frame in aerosolEulerFoam.
+
+================================================================================
+END OF REVIEW
+================================================================================

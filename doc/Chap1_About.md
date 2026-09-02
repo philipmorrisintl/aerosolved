@@ -2,13 +2,14 @@
 
 _Navigation_
 
-1. [About](Chap1_About.md)
-2. [Model](Chap2_Model.md)
-3. [Tutorial](Chap3_Tutorial.md)
-4. [Cases](Chap4_Cases.md)
-5. [Nomenclature](Chap5_Nomenclature.md)
-6. [Classes](Chap6_Classes.md)
-7. [References](Chap7_References.md)
+1. [Installation](Chap0_Installation.md)
+2. [About](Chap1_About.md)
+3. [Model](Chap2_Model.md)
+4. [Tutorial](Chap3_Tutorial.md)
+5. [Cases](Chap4_Cases.md)
+6. [Nomenclature](Chap5_Nomenclature.md)
+7. [Classes](Chap6_Classes.md)
+8. [References](Chap7_References.md)
 
 ## Welcome to AeroSolved
 
@@ -35,21 +36,23 @@ The most important parts of AeroSolved are:
 
 ## Installation
 
-Once a copy of AeroSolved has been obtained, it can be built with:
+AeroSolved is an OpenFOAM library package. Full installation, build and
+post-processing instructions are in the
+[Installation](Chap0_Installation.md) chapter. In short: install a supported
+OpenFOAM (see the [Dependencies](#dependencies) section), then
 
-    make
+```bash
+git clone https://github.com/philipmorrisintl/aerosolved.git
+cd aerosolved
+make            # compile the libraries, solvers and utilities
+```
 
-This will compile all libraries and executables. It also generates documentation in doc/output/html if [DoxyGen](https://www.stack.nl/~dimitri/doxygen) and [Graphviz](http://graphviz.org/) are installed.
-
-The `cases` directory contains a number of cases, which can each be run by using
-
-    ./Allrun
-
-This prepares the case, generates a mesh, and runs aerosolEulerFoam, the main solver of AeroSolved. For some cases, the Allrun script also performs a post-processing step and generates a plot.
+Each case under `cases/` is self-contained and is run with `./Allrun` (for
+example `./Allrun fullStokes sectional` in `cases/bentPipe`).
 
 ## Dependencies
 
-AeroSolved has no special dependencies other than OpenFOAM. It is developed and tested against OpenFOAM-v1812. Some cases require python3 and numpy for generating a post-processing plot (see the [attribution note](../AttributionNote)). The availability of python3 is tested in the Allrun scripts.
+AeroSolved has no special dependencies other than OpenFOAM. It is developed and tested against **OpenFOAM-v2406** and **OpenFOAM-v2412** (see the [README](../README.md) and [Installation](#installation)). Some cases require python3 and numpy for generating a post-processing plot (see the [attribution note](../AttributionNote)). The availability of python3 is tested in the Allrun scripts.
 
 ## Documentation
 

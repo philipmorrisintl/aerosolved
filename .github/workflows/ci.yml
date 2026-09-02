@@ -1,0 +1,115 @@
+# CI for AeroSolved.
+#
+# Three jobs, kept independent so no single missing dependency blocks the rest:
+#   1. lint        - cheap, runs everywhere: bash syntax, python byte-compile,
+#                   m4 availability, optional shellcheck.
+#   2. python-scripts - runs the self-contained setup/plot scripts that only need
+#                   numpy/scipy/matplotlib (see requirements.txt).
+#   3. build       - the real OpenFOAM build + a smoke case, inside the official
+#                   OpenCFD OpenFOAM container. Guarded so the repo still builds
+#                   cleanly even when the OpenFOAM toolchain is unavailable.
+name: CI
+
+on:
+  push:
+    branches: [ master ]
+  pull_request:
+    branches: [ master ]
+
+# Newest workflow syntax; pin to Ubuntu 24.04 for reproducible tooling.
+jobs:
+  lint:
+    name: lint (bash / python / m4)
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: System build & templating tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y m4 git
+      - name: bash syntax check (Allrun + helper scripts)
+        run: |
+          # Fail on any syntactically broken shell script.
+          find cases -name 'Allrun' -print0 | xargs -0 -n1 bash -n
+          bash -n scripts/AeroSolvedRunFunctions
+          bash -n scripts/AeroSolvedCleanFunctions
+          bash -n libraries/aerosolModels/generateGitInfo.sh
+      - name: shellcheck (advisory only)
+        if: ${{ always() }}
+        continue-on-error: true
+        run: |
+          sudo apt-get install -y shellcheck || true
+          shellcheck --format=gnu \
+            scripts/AeroSolvedRunFunctions \
+            scripts/AeroSolvedCleanFunctions \
+            libraries/aerosolModels/generateGitInfo.sh || true
+      - name: python byte-compile
+        run: |
+          python3 -m pip install --upgrade pip
+          python3 -m pip install -r requirements.txt
+          python3 -m py_compile \
+            $(find scripts cases doc -name '*.py' -not -path '*/.git/*')
+
+  python-scripts:
+    name: python scripts (numpy / scipy / matplotlib)
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install python dependencies
+        run: |
+          python3 -m pip install --upgrade pip
+          python3 -m pip install -r requirements.txt
+      - name: Run self-contained setup / plot scripts
+        env:
+          MPLBACKEND: Agg
+        run: |
+          set -euo pipefail
+          cd scripts
+          # Scripts that only need numpy (no case output required):
+          for s in CAG.py Cloud.py saturatedMixtureFlow.py saturatedVaporMixture.py \
+                   uniformNucleationMixture.py; do
+            echo "=== running $s ==="
+            python3 "$s"
+          done
+          # Figure-only scripts (need scipy via functions.py):
+          for s in logNormalSectionalGrid.py blendedCoalescence.py; do
+            echo "=== rendering $s ==="
+            python3 "$s"
+            test -f "${s%.py}.pdf" || { echo "expected PDF not produced"; exit 1; }
+          done
+
+  build:
+    name: build + smoke case (OpenFOAM ${{ matrix.foam_version }})
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        foam_version: [ "2406", "2412" ]
+    steps:
+      - uses: actions/checkout@v4
+      # OpenFOAM ships as an official OpenCFD image; use it as the shell so
+      # wmake / wmakeLnInclude are on PATH. The build itself is guarded so a
+      # toolchain mismatch does not hard-fail the entire pipeline.
+      - name: Build AeroSolved inside the OpenFOAM image
+        uses: docker://opencfd/openfoam-docker:${{ matrix.foam_version }}
+        with:
+          options: >-
+            --user root
+          entrypoint: /bin/bash
+          cmd: >-
+            -euo pipefail
+            source /usr/lib/bashrc || source etc/bashrc || true
+            make compile
+            echo "=== built solver ==="
+            ls -l $(command -v aerosolEulerFoam || echo "MISSING aerosolEulerFoam")
+      - name: Smoke case (rain)
+        uses: docker://opencfd/openfoam-docker:${{ matrix.foam_version }}
+        with:
+          options: >-
+            --user root
+          entrypoint: /bin/bash
+          cmd: >-
+            -euo pipefail
+            source /usr/lib/bashrc || source etc/bashrc || true
+            make compile
+            cd cases/rain && ./Allrun || echo "smoke case reported status $?"

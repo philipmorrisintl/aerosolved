@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/env python3
 
 # Script which computes a polynomial which approximates butanol
 # density in a given temperature range

@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/env python3
 
 # Script which plots the blended coalescence kernel
 # This script can be used to optimize the a, b and Kn0 parameters

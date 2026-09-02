@@ -18,13 +18,14 @@ If you find this project helpful or use it in your work, please cite it using th
 
 Please have a look at the documentation:
 
-1. [About](doc/Chap1_About.md)
-2. [Model](doc/Chap2_Model.md)
-3. [Tutorial](doc/Chap3_Tutorial.md)
-4. [Cases](doc/Chap4_Cases.md)
-5. [Nomenclature](doc/Chap5_Nomenclature.md)
-6. [Classes](doc/Chap6_Classes.md)
-7. [References](doc/Chap7_References.md)
+1. [Installation](doc/Chap0_Installation.md)
+2. [About](doc/Chap1_About.md)
+3. [Model](doc/Chap2_Model.md)
+4. [Tutorial](doc/Chap3_Tutorial.md)
+5. [Cases](doc/Chap4_Cases.md)
+6. [Nomenclature](doc/Chap5_Nomenclature.md)
+7. [Classes](doc/Chap6_Classes.md)
+8. [References](doc/Chap7_References.md)
 
 AeroSolved is developed and tested against **OpenFOAM-v2406** and  **OpenFOAM-v2412**  . Some cases require python3 and numpy for generating a post-processing plot (see the [attribution note](../AttributionNote)).
 

@@ -66,7 +66,7 @@ def rhoWaterg(T):
     return 18.015/8.3144621/T*1E2
 
 def rhoAirg(T):
-    return 28.810/8.3144621/T*1E2
+    return 28.9596/8.3144621/T*1E2
 
 def muPGg(T):
     As = 1.67212e-06

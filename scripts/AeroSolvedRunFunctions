@@ -1,3 +1,12 @@
+# Fail fast on errors and on errors inside pipelines. These settings are
+# inherited by any script that sources this file (e.g. the case Allrun
+# scripts), so a failed wmake / blockMesh / runParallel aborts the run
+# instead of leaving the case half set up.
+set -e
+set -o pipefail
+# Note: -u (nounset) is intentionally NOT set here because the sourced
+# Allrun scripts rely on variables that may be unset in some code paths.
+
 setMacros()
 {
     find . -name *.m4 | while read IN; do
@@ -14,5 +23,17 @@ checkPython3()
     if [ ! -x "$(command -v python3)" ]; then
         echo "Could not find python3 binary"
         exit 1
+    fi
+
+     # Most post-processing scripts depend on numpy; plotting scripts also
+     # need matplotlib. Probe them so a minimal OpenFOAM install does not
+     # fail cryptically mid-run, after meshing/solving has already happened.
+     # These only warn so that cases without a python step still run.
+    if ! python3 -c "import numpy" 2>/dev/null; then
+        echo "WARNING: python3 cannot import numpy; post-processing scripts may fail."
+    fi
+
+    if ! python3 -c "import matplotlib" 2>/dev/null; then
+        echo "WARNING: python3 cannot import matplotlib; plotting scripts may fail."
     fi
 }
