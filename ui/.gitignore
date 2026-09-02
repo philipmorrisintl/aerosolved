@@ -1,0 +1,27 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+build/
+dist/
+.venv/
+
+# OpenFOAM run artefacts
+Time*/
+processor*/
+log.*
+*.dat
+postProcessing/
+
+# IDE / OS
+.DS_Store
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# UI
+ui/__pycache__/
+ui/tests/tmp/
+ui/fixtures/runtime/

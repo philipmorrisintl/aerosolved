@@ -1,0 +1,19 @@
+# UI runtime dependencies (separate from the solver's requirements.txt).
+#
+# Install with:  pip install -r requirements-ui.txt
+#
+# The solver's own deps (numpy, scipy, matplotlib, pyyaml) are listed in the
+# repository-root requirements.txt and are also needed by the UI's plotting.
+#
+# Qt binding: PySide6 (official Qt for Python, LGPL). PyQt6 is a drop-in
+# alternative — the frontend does a fallback import.
+
+PySide6>=6.5 ; platform_system != "Windows"
+
+# Fallback binding (uncomment if PySide6 is unavailable):
+# PyQt6>=6.5
+
+# Headless plotting backend for embedded matplotlib in Qt uses the Agg/Qt5
+# backends shipped with matplotlib; no extra dep needed.
+matplotlib>=3.7
+numpy>=1.24
