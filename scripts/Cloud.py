@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/env python3
 
 # Script to compute the dispersed inlet velocity in the Cloud case
 
@@ -35,4 +35,4 @@ Ud = phiSI/A/alphad
 print('dispersed inlet mass fraction Z =', Z)
 print('dispersed inlet void fraction alpha =', alphad)
 print('dispersed inlet velocity Ud =', Ud, 'm/s')
-print('mixutre inlet velocity U =', Ud*Z, 'm/s')
+print('mixture inlet velocity U =', Ud*Z, 'm/s')

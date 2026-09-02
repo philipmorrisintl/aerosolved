@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/env python3
 
 # Script which plots the PG, VG and water temperature-dependent
 # density functions, and the polynomial which is used to

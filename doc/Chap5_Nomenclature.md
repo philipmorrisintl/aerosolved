@@ -26,7 +26,7 @@ This document provides the nomenclature of important variables that are used ins
 
 ## Top-level aerosolEulerFoam solver
 
-* `aerosol`: reference to the aerosolModel object3
+* `aerosol`: reference to the aerosolModel object
 * `dpdt`: material time derivative of the pressure field [kg/m/s<sup>3</sup>]
 * `fvOptions`: reference to the fv:options object
 * `inertIndex`: index of the inert species in species lists
